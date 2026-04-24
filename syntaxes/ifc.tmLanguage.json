@@ -45,7 +45,7 @@
     "entity-name": {
       "patterns": [
         {
-          "name": "support.type.ifc",
+          "name": "entity.name.class.ifc",
           "match": "\\b[A-Z][A-Z0-9_]*\\b"
         }
       ]

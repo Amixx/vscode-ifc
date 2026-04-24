@@ -124,7 +124,6 @@
       "[ifc]": {
         "editor.colorDecorators": false,
         "editor.matchBrackets": "always",
-        "editor.guides.bracketPairs": "active",
         "editor.bracketPairColorization.enabled": true
       }
     }
