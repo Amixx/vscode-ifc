@@ -23,6 +23,9 @@ export class IfcLanguageClientManager {
 
     const resolved = await resolveServer(this.context, this.output, options);
     this.output.info(`Starting IFC language server from ${resolved.source}: ${resolved.command}`);
+    if (resolved.version) {
+      this.output.info(`IFC language server version: ${resolved.version}`);
+    }
     if (resolved.args.length > 0) {
       this.output.info(`IFC language server arguments: ${JSON.stringify(resolved.args)}`);
     }

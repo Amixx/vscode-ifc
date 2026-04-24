@@ -9,6 +9,7 @@ import { getTargetPlatform } from "./platform";
 export interface DownloadOptions {
   context: vscode.ExtensionContext;
   repository: string;
+  version: string;
   assetPattern: string;
   output: vscode.LogOutputChannel;
 }
@@ -27,15 +28,16 @@ export async function downloadIfcLanguageServer(
   options: DownloadOptions,
 ): Promise<string> {
   const target = getTargetPlatform();
+  const normalizedVersion = normalizeVersionTag(options.version);
   options.output.info(
-    `Fetching latest GitHub release metadata for ${options.repository} (${target.platform}-${target.arch}).`,
+    `Fetching GitHub release metadata for ${options.repository}@${normalizedVersion} (${target.platform}-${target.arch}).`,
   );
-  const release = await fetchLatestRelease(options.repository);
+  const release = await fetchReleaseByTag(options.repository, normalizedVersion);
   const asset = pickAsset(release.assets, target, options.assetPattern);
 
   if (!asset) {
     throw new Error(
-      `No release asset matched ${target.platform}/${target.arch} in ${options.repository}.`,
+      `No release asset matched ${target.platform}/${target.arch} in ${options.repository}@${normalizedVersion}.`,
     );
   }
 
@@ -47,6 +49,7 @@ export async function downloadIfcLanguageServer(
     options.context.globalStorageUri.fsPath,
     "language-server",
     `${target.platform}-${target.arch}`,
+    normalizedVersion,
   );
 
   await fs.mkdir(installDir, { recursive: true });
@@ -80,8 +83,38 @@ export async function downloadIfcLanguageServer(
   return binaryPath;
 }
 
-async function fetchLatestRelease(repository: string): Promise<GitHubRelease> {
-  const url = `https://api.github.com/repos/${repository}/releases/latest`;
+export async function cleanupOldLanguageServers(
+  context: vscode.ExtensionContext,
+  output: vscode.LogOutputChannel,
+  keepVersion: string,
+): Promise<void> {
+  const target = getTargetPlatform();
+  const platformRoot = path.join(
+    context.globalStorageUri.fsPath,
+    "language-server",
+    `${target.platform}-${target.arch}`,
+  );
+
+  try {
+    const entries = await fs.readdir(platformRoot, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name === keepVersion) {
+        continue;
+      }
+
+      const fullPath = path.join(platformRoot, entry.name);
+      output.info(`Removing stale cached IFC language server: ${fullPath}`);
+      await fs.rm(fullPath, { recursive: true, force: true });
+    }
+  } catch (error) {
+    if (!isErrnoException(error) || error.code !== "ENOENT") {
+      throw error;
+    }
+  }
+}
+
+async function fetchReleaseByTag(repository: string, version: string): Promise<GitHubRelease> {
+  const url = `https://api.github.com/repos/${repository}/releases/tags/${encodeURIComponent(version)}`;
   return requestJson<GitHubRelease>(url);
 }
 
@@ -127,6 +160,11 @@ function scoreAsset(name: string, target: ReturnType<typeof getTargetPlatform>):
     : 1;
 
   return platformScore + archScore + binaryHintScore + archiveScore;
+}
+
+function normalizeVersionTag(version: string): string {
+  const trimmed = version.trim();
+  return trimmed.startsWith("v") ? trimmed : `v${trimmed}`;
 }
 
 async function installAsset(
@@ -243,4 +281,8 @@ function requestBuffer(url: string): Promise<Buffer> {
 
     request.on("error", reject);
   });
+}
+
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === "object" && error !== null;
 }

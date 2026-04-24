@@ -1,11 +1,12 @@
 import * as vscode from "vscode";
 import { Trace } from "vscode-languageclient/node";
+import { PINNED_LANGUAGE_SERVER_VERSION } from "./constants";
 
 export interface IfcExtensionConfig {
   serverPath: string;
   serverArgs: string[];
-  preferPath: boolean;
-  autoDownload: boolean;
+  pinnedVersion: string;
+  versionOverride: string;
   githubRepository: string;
   downloadAssetPattern: string;
   trace: Trace;
@@ -17,8 +18,8 @@ export function getIfcConfig(): IfcExtensionConfig {
   return {
     serverPath: config.get<string>("server.path", "").trim(),
     serverArgs: config.get<string[]>("server.args", []),
-    preferPath: config.get<boolean>("server.preferPath", true),
-    autoDownload: config.get<boolean>("server.autoDownload", true),
+    pinnedVersion: PINNED_LANGUAGE_SERVER_VERSION,
+    versionOverride: config.get<string>("server.versionOverride", "").trim(),
     githubRepository: config.get<string>(
       "server.githubRepository",
       "NepomukWolf/IFC-Language-Server",

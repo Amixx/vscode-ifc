@@ -40,7 +40,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       try {
         const resolved = await resolveServer(context, output);
         const message =
-          `IFC language server: ${resolved.command} (${resolved.source})` +
+          `IFC language server: ${resolved.command} (${resolved.source}` +
+          (resolved.version ? `, ${resolved.version}` : "") +
+          `)` +
           (resolved.args.length > 0 ? ` args=${JSON.stringify(resolved.args)}` : "");
         output.info(message);
         void vscode.window.showInformationMessage(message);

@@ -2,13 +2,14 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { getIfcConfig } from "./config";
-import { downloadIfcLanguageServer } from "./installer";
+import { cleanupOldLanguageServers, downloadIfcLanguageServer } from "./installer";
 import { getTargetPlatform } from "./platform";
 
 export interface ResolvedServer {
   command: string;
   args: string[];
-  source: "configured" | "path" | "downloaded";
+  version: string | null;
+  source: "configured" | "downloaded";
 }
 
 export async function resolveServer(
@@ -18,56 +19,58 @@ export async function resolveServer(
 ): Promise<ResolvedServer> {
   const config = getIfcConfig();
   const target = getTargetPlatform();
+  const selectedVersion = config.versionOverride || config.pinnedVersion;
   output.info(
     `Resolving IFC language server for ${target.platform}-${target.arch} ` +
-      `(preferPath=${config.preferPath}, autoDownload=${config.autoDownload}).`,
+      `(targetVersion=${selectedVersion}, pinnedVersion=${config.pinnedVersion}).`,
   );
 
   if (config.serverPath) {
     output.info(`Checking configured server path: ${config.serverPath}`);
     const configuredPath = await requireExecutable(config.serverPath);
     output.info(`Using configured IFC language server: ${configuredPath}`);
-    return { command: configuredPath, args: config.serverArgs, source: "configured" };
+    return {
+      command: configuredPath,
+      args: config.serverArgs,
+      version: null,
+      source: "configured",
+    };
   }
 
-  const candidates = config.preferPath
-    ? [
-        { label: "PATH", resolver: () => findOnPath(target.binaryNames) },
-        { label: "download cache", resolver: () => findCachedDownload(context, target.binaryNames) },
-      ]
-    : [
-        { label: "download cache", resolver: () => findCachedDownload(context, target.binaryNames) },
-        { label: "PATH", resolver: () => findOnPath(target.binaryNames) },
-      ];
-
-  for (const candidateEntry of candidates) {
-    output.info(`Checking ${candidateEntry.label} for IFC language server.`);
-    const candidate = await candidateEntry.resolver();
-    if (candidate) {
-      output.info(`Using IFC language server from ${candidateEntry.label}: ${candidate}`);
-      return { command: candidate, args: config.serverArgs, source: candidateSource(candidate, context) };
+  if (!options?.forceDownload) {
+    output.info(`Checking download cache for IFC language server version ${selectedVersion}.`);
+    const cached = await findCachedDownload(context, target.binaryNames, selectedVersion);
+    if (cached) {
+      output.info(`Using cached IFC language server: ${cached}`);
+      return {
+        command: cached,
+        args: config.serverArgs,
+        version: selectedVersion,
+        source: "downloaded",
+      };
     }
-    output.info(`No IFC language server found in ${candidateEntry.label}.`);
   }
 
-  if (options?.forceDownload || config.autoDownload) {
-    output.info(
-      `No local IFC language server found. Attempting download from ${config.githubRepository}.`,
-    );
-    const downloadedPath = await downloadIfcLanguageServer({
-      context,
-      repository: config.githubRepository,
-      assetPattern: config.downloadAssetPattern,
-      output,
-    });
-
-    output.info(`Using downloaded IFC language server: ${downloadedPath}`);
-    return { command: downloadedPath, args: config.serverArgs, source: "downloaded" };
-  }
-
-  throw new Error(
-    "Unable to locate IFC language server. Configure ifc.server.path, add it to PATH, or enable ifc.server.autoDownload.",
+  output.info(
+    `Downloading IFC language server version ${selectedVersion} from ${config.githubRepository}.`,
   );
+  const downloadedPath = await downloadIfcLanguageServer({
+    context,
+    repository: config.githubRepository,
+    version: selectedVersion,
+    assetPattern: config.downloadAssetPattern,
+    output,
+  });
+
+  await cleanupOldLanguageServers(context, output, selectedVersion);
+
+  output.info(`Using downloaded IFC language server: ${downloadedPath}`);
+  return {
+    command: downloadedPath,
+    args: config.serverArgs,
+    version: selectedVersion,
+    source: "downloaded",
+  };
 }
 
 async function requireExecutable(candidatePath: string): Promise<string> {
@@ -82,45 +85,19 @@ async function requireExecutable(candidatePath: string): Promise<string> {
 async function findCachedDownload(
   context: vscode.ExtensionContext,
   binaryNames: string[],
+  version: string,
 ): Promise<string | undefined> {
   const targetDir = path.join(
     context.globalStorageUri.fsPath,
     "language-server",
     `${process.platform}-${process.arch}`,
+    version,
   );
 
   for (const binaryName of binaryNames) {
     const candidate = path.join(targetDir, binaryName);
     if (await exists(candidate)) {
       return candidate;
-    }
-  }
-
-  return undefined;
-}
-
-async function findOnPath(binaryNames: string[]): Promise<string | undefined> {
-  const pathValue = process.env.PATH;
-  if (!pathValue) {
-    return undefined;
-  }
-
-  const pathEntries = pathValue.split(path.delimiter);
-  const windowsExtensions = process.platform === "win32"
-    ? (process.env.PATHEXT ?? ".EXE").split(";").map((entry) => entry.toLowerCase())
-    : [""];
-
-  for (const directory of pathEntries) {
-    for (const binaryName of binaryNames) {
-      const variants = process.platform === "win32" && !path.extname(binaryName)
-        ? windowsExtensions.map((extension) => path.join(directory, `${binaryName}${extension}`))
-        : [path.join(directory, binaryName)];
-
-      for (const candidate of variants) {
-        if (await exists(candidate)) {
-          return candidate;
-        }
-      }
     }
   }
 
@@ -134,8 +111,4 @@ async function exists(candidatePath: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-function candidateSource(candidate: string, context: vscode.ExtensionContext): ResolvedServer["source"] {
-  return candidate.startsWith(context.globalStorageUri.fsPath) ? "downloaded" : "path";
 }

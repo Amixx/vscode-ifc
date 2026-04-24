@@ -93,20 +93,15 @@
           },
           "markdownDescription": "Additional command-line arguments passed to the IFC language server."
         },
-        "ifc.server.preferPath": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "Prefer a matching binary on PATH over a cached downloaded binary."
-        },
-        "ifc.server.autoDownload": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "Download the latest matching GitHub release when no local language server is available."
+        "ifc.server.versionOverride": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Advanced: use a specific IFC language server Git tag instead of the version pinned by the extension, for example `v0.2.0`."
         },
         "ifc.server.githubRepository": {
           "type": "string",
           "default": "NepomukWolf/IFC-Language-Server",
-          "markdownDescription": "GitHub repository used for release downloads, in owner/repo form."
+          "markdownDescription": "GitHub repository used for IFC language server downloads, in owner/repo form."
         },
         "ifc.server.downloadAssetPattern": {
           "type": "string",
@@ -140,6 +135,7 @@
     "resources",
     "language-configuration.json",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
