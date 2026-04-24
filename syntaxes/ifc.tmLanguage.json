@@ -1,0 +1,107 @@
+{
+  "name": "IFC STEP",
+  "scopeName": "source.ifc",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#keywords" },
+    { "include": "#instance-id" },
+    { "include": "#entity-name" },
+    { "include": "#enumeration" },
+    { "include": "#string" },
+    { "include": "#number" },
+    { "include": "#null" },
+    { "include": "#omitted" }
+  ],
+  "repository": {
+
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.ifc",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.ifc",
+          "match": "\\b(ISO-10303-21|END-ISO-10303-21|HEADER|DATA|ENDSEC)\\b"
+        }
+      ]
+    },
+
+    "instance-id": {
+      "patterns": [
+        {
+          "name": "variable.other.instance.ifc",
+          "match": "#[0-9]+"
+        }
+      ]
+    },
+
+    "entity-name": {
+      "patterns": [
+        {
+          "name": "support.type.ifc",
+          "match": "\\b[A-Z][A-Z0-9_]*\\b"
+        }
+      ]
+    },
+
+    "enumeration": {
+      "patterns": [
+        {
+          "name": "constant.language.enumeration.ifc",
+          "match": "\\.[A-Z_]+\\."
+        }
+      ]
+    },
+
+    "string": {
+      "patterns": [
+        {
+          "name": "string.quoted.single.ifc",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.ifc",
+              "match": "''"
+            }
+          ]
+        }
+      ]
+    },
+
+    "number": {
+      "patterns": [
+        {
+          "name": "constant.numeric.ifc",
+          "match": "-?[0-9]+(\\.[0-9]+)?([Ee][+-]?[0-9]+)?"
+        }
+      ]
+    },
+
+    "null": {
+      "patterns": [
+        {
+          "name": "constant.language.null.ifc",
+          "match": "\\$"
+        }
+      ]
+    },
+
+    "omitted": {
+      "patterns": [
+        {
+          "name": "constant.language.omitted.ifc",
+          "match": "\\*"
+        }
+      ]
+    }
+
+  }
+}

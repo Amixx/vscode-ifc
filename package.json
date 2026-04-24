@@ -1,0 +1,162 @@
+{
+  "name": "vscode-ifc",
+  "displayName": "IFC",
+  "description": "Professional VS Code support for IFC STEP files powered by the IFC Language Server.",
+  "version": "0.1.0",
+  "publisher": "nepomukwolf",
+  "license": "MIT",
+  "icon": "resources/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NepomukWolf/vscode-ifc.git"
+  },
+  "homepage": "https://github.com/NepomukWolf/vscode-ifc",
+  "bugs": {
+    "url": "https://github.com/NepomukWolf/vscode-ifc/issues"
+  },
+  "author": {
+    "name": "Nepomuk Wolf",
+    "url": "https://github.com/NepomukWolf"
+  },
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "ifc",
+    "step",
+    "bim",
+    "building",
+    "iso-10303"
+  ],
+  "activationEvents": [
+    "onLanguage:ifc",
+    "onCommand:ifc.downloadLanguageServer",
+    "onCommand:ifc.restartLanguageServer",
+    "onCommand:ifc.showResolvedServer"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ifc",
+        "aliases": [
+          "IFC"
+        ],
+        "extensions": [
+          ".ifc",
+          ".step",
+          ".stp"
+        ],
+        "wordPattern": "[#a-zA-Z0-9_]+",
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ifc",
+        "scopeName": "source.ifc",
+        "path": "./syntaxes/ifc.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "ifc.downloadLanguageServer",
+        "title": "IFC: Download Language Server"
+      },
+      {
+        "command": "ifc.restartLanguageServer",
+        "title": "IFC: Restart Language Server"
+      },
+      {
+        "command": "ifc.showResolvedServer",
+        "title": "IFC: Show Resolved Language Server"
+      }
+    ],
+    "configuration": {
+      "title": "IFC",
+      "properties": {
+        "ifc.server.path": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Absolute path to a custom IFC language server binary."
+        },
+        "ifc.server.args": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Additional command-line arguments passed to the IFC language server."
+        },
+        "ifc.server.preferPath": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Prefer a matching binary on PATH over a cached downloaded binary."
+        },
+        "ifc.server.autoDownload": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Download the latest matching GitHub release when no local language server is available."
+        },
+        "ifc.server.githubRepository": {
+          "type": "string",
+          "default": "NepomukWolf/IFC-Language-Server",
+          "markdownDescription": "GitHub repository used for release downloads, in owner/repo form."
+        },
+        "ifc.server.downloadAssetPattern": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Optional substring used to narrow the selected GitHub release asset."
+        },
+        "ifc.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "markdownDescription": "Trace level for the IFC language server protocol traffic."
+        }
+      }
+    },
+    "configurationDefaults": {
+      "[ifc]": {
+        "editor.colorDecorators": false,
+        "editor.matchBrackets": "always",
+        "editor.guides.bracketPairs": "active",
+        "editor.bracketPairColorization.enabled": true
+      }
+    }
+  },
+  "files": [
+    "out",
+    "syntaxes",
+    "resources",
+    "language-configuration.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "tar": "^7.4.3",
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.6.2",
+    "@types/node": "^20.17.50",
+    "@types/vscode": "^1.93.0",
+    "typescript": "^5.9.3"
+  }
+}
