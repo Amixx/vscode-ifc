@@ -1,9 +1,9 @@
-# IFC
+# IFC VS Code Extension
 
 [![Visual Studio Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue)](https://marketplace.visualstudio.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**IFC** adds language support for IFC STEP files (`.ifc`, `.step`, `.stp`) in Visual Studio Code.
+**IFC** adds language support for IFC STEP files (`.ifc`, `.step`, `.stp`) in Visual Studio Code and is powered by the [IFC Language Server](https://github.com/NepomukWolf/IFC-Language-Server).
 
 It combines local editor support with the **IFC Language Server** to provide:
 
@@ -122,6 +122,12 @@ Supported asset formats:
 - `.tgz`
 
 Archives should contain either `ifc-language-server` or `ifc-lsp` and use `.exe` on Windows.
+
+## Language Server
+
+This extension is powered by the [IFC Language Server](https://github.com/NepomukWolf/IFC-Language-Server).
+
+For normal use, the extension automatically installs the language server version pinned by the current extension release.
 
 ## License
 
