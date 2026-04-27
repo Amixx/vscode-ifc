@@ -1,4 +1,4 @@
-# IFC VS Code Extension
+# IFC Language Support for VS Code
 
 [![Visual Studio Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue)](https://marketplace.visualstudio.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)

@@ -1,6 +1,6 @@
 {
   "name": "vscode-ifc",
-  "displayName": "IFC",
+  "displayName": "IFC Language Support",
   "description": "Professional VS Code support for IFC STEP files powered by the IFC Language Server.",
   "version": "0.1.0",
   "publisher": "nepomukwolf",
@@ -66,19 +66,19 @@
     "commands": [
       {
         "command": "ifc.downloadLanguageServer",
-        "title": "IFC: Download Language Server"
+        "title": "IFC Language Support: Download Language Server"
       },
       {
         "command": "ifc.restartLanguageServer",
-        "title": "IFC: Restart Language Server"
+        "title": "IFC Language Support: Restart Language Server"
       },
       {
         "command": "ifc.showResolvedServer",
-        "title": "IFC: Show Resolved Language Server"
+        "title": "IFC Language Support: Show Resolved Language Server"
       }
     ],
     "configuration": {
-      "title": "IFC",
+      "title": "IFC Language Support",
       "properties": {
         "ifc.server.path": {
           "type": "string",
