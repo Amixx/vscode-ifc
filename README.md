@@ -93,7 +93,8 @@ npm install
 npm run compile
 ```
 
-Then press `F5` in Visual Studio Code to launch an Extension Development Host.
+Then navigate to src/extention.ts, press `F5`, and select VS Code Extension Development. 
+A new VSCode window shall open. 
 
 ### Using a Local Language Server Build
 
