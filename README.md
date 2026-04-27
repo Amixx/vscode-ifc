@@ -93,8 +93,16 @@ npm install
 npm run compile
 ```
 
-Then navigate to src/extention.ts, press `F5`, and select VS Code Extension Development. 
-A new VSCode window shall open. 
+Then open `src/extension.ts`, press `F5`, and choose `VS Code Extension Development Host`.
+A new VS Code window will open.
+
+Alternatively, you can package the extension as a `.vsix` and install it locally:
+
+```bash
+npm run package
+```
+
+This creates a `.vsix` file. In VS Code, press `Ctrl+Shift+P` (`Cmd+Shift+P` on macOS), search for `Install from VSIX`, and choose the generated `.vsix` file.
 
 ### Using a Local Language Server Build
 
