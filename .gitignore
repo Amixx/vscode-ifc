@@ -3,6 +3,7 @@ out
 *.vsix
 .vscode-test
 .vscode
+test-files
 
 # MacOS finder
 .DS_Store
