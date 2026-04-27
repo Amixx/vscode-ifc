@@ -28,7 +28,10 @@ jobs:
 
       - name: Install vsce
         run: npm install -g @vscode/vsce
-
+      
+      - name: Compile TypeScript
+        run: npm run compile
+        
       - name: Derive version from package.json + commit count
         id: version
         run: |
