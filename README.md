@@ -3,9 +3,11 @@
 [![Visual Studio Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue)](https://marketplace.visualstudio.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**IFC** adds language support for IFC STEP files (`.ifc`, `.step`, `.stp`) in Visual Studio Code and is powered by the [IFC Language Server](https://github.com/NepomukWolf/IFC-Language-Server).
+This extension adds language support for IFC STEP files (`.ifc`, `.step`, `.stp`) in Visual Studio Code and is powered by the [IFC Language Server](https://github.com/NepomukWolf/IFC-Language-Server).
 
-It combines local editor support with the **IFC Language Server** to provide:
+For normal use, install the extension and open an IFC file. The extension automatically installs the language server version pinned by the current extension release.
+
+It combines local editor support with the IFC Language Server to provide:
 
 - Syntax highlighting
 - Bracket matching and colored bracket pairs
@@ -46,18 +48,14 @@ Clean syntax highlighting for IFC STEP files.
 ## Installation
 
 Install the extension from the Visual Studio Code Marketplace or from a `.vsix`.
-
-For normal users, no manual language-server setup is required. The extension automatically downloads the IFC language server version pinned by the extension and caches it in VS Code's global storage.
+No manual language-server setup is required for normal use.
 
 ## Usage
 
 1. Open an IFC file (`.ifc`, `.step`, or `.stp`) in Visual Studio Code.
-2. Hover over:
-   - STEP IDs such as `#12345`
-   - IFC entity names such as `IFCWALL`
-3. Use:
-   - `F12` or Ctrl/Cmd-click for go to definition
-   - `Shift + F12` for find references
+2. Hover over STEP IDs such as `#12345` or IFC entity names such as `IFCWALL`.
+3. Use `F12` or Ctrl/Cmd-click for go to definition.
+4. Use `Shift + F12` for find references.
 
 ## Settings
 
@@ -82,7 +80,6 @@ For IFC files, the extension enables these defaults:
 
 - `editor.colorDecorators`: disabled
 - `editor.matchBrackets`: always
-- `editor.guides.bracketPairs`: active
 - `editor.bracketPairColorization.enabled`: enabled
 
 You can override these in your own VS Code settings if desired.
@@ -110,24 +107,13 @@ If you are developing the language server itself, point the extension at a local
 
 The easiest place to set this while testing is the Extension Development Host's settings JSON.
 
-## Release Asset Expectations
-
-The extension expects platform-specific GitHub release assets for the IFC language server. Asset names should include operating-system and architecture hints such as `macos-arm64`, `linux-x64`, or `windows-x64`.
-
-Supported asset formats:
-
-- raw executable
-- `.zip`
-- `.tar.gz`
-- `.tgz`
-
-Archives should contain either `ifc-language-server` or `ifc-lsp` and use `.exe` on Windows.
-
 ## Language Server
 
 This extension is powered by the [IFC Language Server](https://github.com/NepomukWolf/IFC-Language-Server).
 
 For normal use, the extension automatically installs the language server version pinned by the current extension release.
+
+For release packaging, the extension expects platform-specific GitHub release assets whose names include operating-system and architecture hints such as `macos-arm64`, `linux-x64`, or `windows-x64`. Supported asset formats are raw executables, `.zip`, `.tar.gz`, and `.tgz`. Archives should contain either `ifc-language-server` or `ifc-lsp`, with `.exe` on Windows.
 
 ## License
 
