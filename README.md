@@ -15,6 +15,26 @@ It combines local editor support with the IFC Language Server to provide:
 - Go to definition
 - Find references
 
+## Installation
+
+No manual language-server setup is required for normal use.
+
+### Install from a `.vsix` Release
+
+Prebuilt `.vsix` packages are available on the GitHub releases page:
+
+https://github.com/NepomukWolf/vscode-ifc/releases
+
+To install the extension from a release:
+
+1. Open the releases page.
+2. Download the latest `.vsix` file from the release assets.
+3. Open VS Code.
+4. Press `Ctrl+Shift+P` (`Cmd+Shift+P` on macOS) to open the Command Palette.
+5. Search for `Install from VSIX` and select `Extensions: Install from VSIX...`.
+6. Choose the downloaded `.vsix` file.
+7. Reload VS Code if prompted.
+
 ## Features
 
 ### Hover Preview for Step IDs
@@ -45,10 +65,7 @@ Clean syntax highlighting for IFC STEP files.
 
 ![Syntax Highlighting](resources/syntax_highlighting.png)
 
-## Installation
-
-Install the extension from the Visual Studio Code Marketplace or from a `.vsix`.
-No manual language-server setup is required for normal use.
+After installation, open an IFC file and the extension will automatically download the required IFC language server.
 
 ## Usage
 
