@@ -9,6 +9,8 @@ export interface IfcExtensionConfig {
   versionOverride: string;
   githubRepository: string;
   downloadAssetPattern: string;
+  overwriteExpSchemaWithLocal: string;
+  addLocalSchemaToSelection: string[];
   trace: Trace;
 }
 
@@ -25,6 +27,13 @@ export function getIfcConfig(): IfcExtensionConfig {
       "NepomukWolf/IFC-Language-Server",
     ),
     downloadAssetPattern: config.get<string>("server.downloadAssetPattern", "").trim(),
+    overwriteExpSchemaWithLocal: config
+      .get<string>("schema.overwriteExpSchemaWithLocal", "")
+      .trim(),
+    addLocalSchemaToSelection: config
+      .get<string[]>("schema.addLocalSchemaToSelection", [])
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0),
     trace: toTrace(config.get<string>("trace.server", "off")),
   };
 }
