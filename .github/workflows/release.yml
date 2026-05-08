@@ -2,20 +2,20 @@ name: Release VSCode Extension
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # needed to create GitHub releases
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # full history so we can count commits for versioning
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -31,15 +31,21 @@ jobs:
       
       - name: Compile TypeScript
         run: npm run compile
-        
-      - name: Derive version from package.json + commit count
-        id: version
+
+      - name: Verify tag is on production
         run: |
-          BASE=$(node -p "require('./package.json').version")
-          COUNT=$(git rev-list --count HEAD)
-          SHA=$(git rev-parse --short HEAD)
-          echo "tag=v${BASE}-build.${COUNT}+${SHA}" >> "$GITHUB_OUTPUT"
-          echo "label=${BASE}-build.${COUNT}+${SHA}" >> "$GITHUB_OUTPUT"
+          git fetch origin production:refs/remotes/origin/production
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/production
+
+      - name: Verify tag matches package version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+
+          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)." >&2
+            exit 1
+          fi
 
       - name: Package extension
         run: vsce package --out extension.vsix
@@ -47,12 +53,12 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: "Build ${{ steps.version.outputs.label }}"
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           body: |
-            Automated build from commit ${{ github.sha }}
+            Release for commit ${{ github.sha }}
 
-            **Branch:** `${{ github.ref_name }}`
+            **Tag:** `${{ github.ref_name }}`
+            **Branch:** `production`
             **Triggered by:** ${{ github.actor }}
           files: extension.vsix
-          prerelease: true   # mark as pre-release since these are not manually tagged
