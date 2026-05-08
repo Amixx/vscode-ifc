@@ -4,8 +4,13 @@ import {
   LanguageClientOptions,
   ServerOptions,
 } from "vscode-languageclient/node";
-import { getIfcConfig } from "./config";
+import { IfcExtensionConfig, getIfcConfig } from "./config";
 import { resolveServer } from "./serverPath";
+
+interface IfcInitializationOptions {
+  overwriteExpSchemaWithLocal?: string;
+  addLocalSchemaToSelection?: string[];
+}
 
 export class IfcLanguageClientManager {
   private client: LanguageClient | undefined;
@@ -22,6 +27,7 @@ export class IfcLanguageClientManager {
     }
 
     const resolved = await resolveServer(this.context, this.output, options);
+    const config = getIfcConfig();
     this.output.info(`Starting IFC language server from ${resolved.source}: ${resolved.command}`);
     if (resolved.version) {
       this.output.info(`IFC language server version: ${resolved.version}`);
@@ -43,6 +49,7 @@ export class IfcLanguageClientManager {
 
     const clientOptions: LanguageClientOptions = {
       documentSelector: [{ language: "ifc", scheme: "file" }],
+      initializationOptions: getInitializationOptions(config),
       outputChannel: this.output,
     };
 
@@ -53,7 +60,7 @@ export class IfcLanguageClientManager {
       clientOptions,
     );
 
-    this.client.setTrace(getIfcConfig().trace);
+    this.client.setTrace(config.trace);
     await this.client.start();
     this.output.info("IFC language client started.");
   }
@@ -75,4 +82,20 @@ export class IfcLanguageClientManager {
     await this.stop();
     await this.start();
   }
+}
+
+function getInitializationOptions(
+  config: IfcExtensionConfig,
+): IfcInitializationOptions {
+  const initializationOptions: IfcInitializationOptions = {};
+
+  if (config.overwriteExpSchemaWithLocal) {
+    initializationOptions.overwriteExpSchemaWithLocal = config.overwriteExpSchemaWithLocal;
+  }
+
+  if (config.addLocalSchemaToSelection.length > 0) {
+    initializationOptions.addLocalSchemaToSelection = config.addLocalSchemaToSelection;
+  }
+
+  return initializationOptions;
 }
