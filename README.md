@@ -11,6 +11,7 @@ It combines local editor support with the IFC Language Server to provide:
 
 - Syntax highlighting
 - Bracket matching and colored bracket pairs
+- Diagnostics
 - Hover information
 - Go to definition
 - Find references
@@ -49,6 +50,16 @@ Hover over IFC entity names such as `IFCWALL` to view schema documentation.
 
 ![Entity Hover](resources/entity_hover.png)
 
+### Diagnostics
+
+The language server validates IFC entities and attribute values directly in the editor against the correct IFC schema.
+
+It reports issues such as invalid references, wrong primitive value types, unknown entity names, and invalid enumeration values, incorrect cardinalities.
+
+![Diagnostics](resources/diagnostics1.png)
+
+![Diagnostics](resources/diagnostics2.png)
+
 ### Go to Definition
 
 Use `F12` or Ctrl/Cmd-click on STEP identifiers such as `#12345` to jump directly to their definitions.
@@ -70,9 +81,10 @@ After installation, open an IFC file and the extension will automatically downlo
 ## Usage
 
 1. Open an IFC file (`.ifc`, `.step`, or `.stp`) in Visual Studio Code.
-2. Hover over STEP IDs such as `#12345` or IFC entity names such as `IFCWALL`.
-3. Use `F12` or Ctrl/Cmd-click for go to definition.
-4. Use `Shift + F12` for find references.
+2. Review diagnostics directly in the editor and Problems view.
+3. Hover over STEP IDs such as `#12345` or IFC entity names such as `IFCWALL`.
+4. Use `F12` or Ctrl/Cmd-click for go to definition.
+5. Use `Shift + F12` for find references.
 
 ## Settings
 
@@ -83,7 +95,11 @@ Most users do not need to change anything. Advanced settings are available for d
 - `ifc.server.versionOverride`: Advanced override for the Git tag to download instead of the extension-pinned version.
 - `ifc.server.githubRepository`: GitHub repository used for IFC language server downloads, in `owner/repo` form.
 - `ifc.server.downloadAssetPattern`: Optional substring used to narrow the selected release asset.
+- `ifc.schema.overwriteExpSchemaWithLocal`: Absolute path to a local `.exp` schema file to force for diagnostics and hover.
+- `ifc.schema.addLocalSchemaToSelection`: List of local `.exp` files or directories containing `.exp` files that the language server may use for schema selection.
 - `ifc.trace.server`: Trace level for the VS Code language client.
+
+Changes to IFC settings restart the language server automatically.
 
 ## Commands
 
@@ -132,6 +148,22 @@ If you are developing the language server itself, point the extension at a local
 ```
 
 The easiest place to set this while testing is the Extension Development Host's settings JSON.
+
+### Using Local `.exp` Schemas
+
+The extension passes local schema settings to the IFC Language Server through LSP initialization options.
+
+```json
+{
+  "ifc.schema.overwriteExpSchemaWithLocal": "/absolute/path/to/IFC4x2.exp",
+  "ifc.schema.addLocalSchemaToSelection": [
+    "/absolute/path/to/IFC4x1.exp",
+    "/absolute/path/to/custom-schemas"
+  ]
+}
+```
+
+Use `ifc.schema.overwriteExpSchemaWithLocal` to force one schema. Use `ifc.schema.addLocalSchemaToSelection` to add individual `.exp` files or directories to the server's schema lookup pool.
 
 ## Language Server
 

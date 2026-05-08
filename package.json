@@ -2,7 +2,7 @@
   "name": "vscode-ifc",
   "displayName": "IFC Language Support",
   "description": "Professional VS Code support for IFC STEP files powered by the IFC Language Server.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "nepomukwolf",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -96,7 +96,7 @@
         "ifc.server.versionOverride": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Advanced: use a specific IFC language server Git tag instead of the version pinned by the extension, for example `v0.2.0`."
+          "markdownDescription": "Advanced: use a specific IFC language server Git tag instead of the version pinned by the extension, for example `v0.3.0`."
         },
         "ifc.server.githubRepository": {
           "type": "string",
@@ -107,6 +107,19 @@
           "type": "string",
           "default": "",
           "markdownDescription": "Optional substring used to narrow the selected GitHub release asset."
+        },
+        "ifc.schema.overwriteExpSchemaWithLocal": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Optional absolute path to a local `.exp` schema file. If set, the language server uses this schema for diagnostics and hover regardless of the IFC file's declared `FILE_SCHEMA(...)`."
+        },
+        "ifc.schema.addLocalSchemaToSelection": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Optional list of local `.exp` files or directories containing `.exp` files. These paths are added to the language server's schema selection pool."
         },
         "ifc.trace.server": {
           "type": "string",

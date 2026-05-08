@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+- Update to IFC Language Server `v0.3.0`
+- Add diagnostics powered by the language server
+- Add settings for local `.exp` schema override and schema selection
+
 ## 0.1.0
 
 - Initial release
