@@ -139,15 +139,27 @@ This creates a `.vsix` file. In VS Code, press `Ctrl+Shift+P` (`Cmd+Shift+P` on 
 
 ### Using a Local Language Server Build
 
-If you are developing the language server itself, point the extension at a local build with:
+Build the server with `cargo build --release`. Debug builds are dramatically slower on real IFC files (a 180 MB file took ~3 min in debug vs ~50 s in release; almost all of that time is tree-sitter parsing).
+
+Point the extension at the binary:
 
 ```json
 {
-  "ifc.server.path": "/absolute/path/to/ifc-language-server"
+  "ifc.server.path": "/absolute/path/to/IFC-Language-Server/target/release/ifc-language-server"
 }
 ```
 
-The easiest place to set this while testing is the Extension Development Host's settings JSON.
+### Files larger than ~50 MB
+
+VS Code stops syncing normal `file:` documents past ~50 MB to the extension host, so the extension offers a read-only `ifc-large:` view for local IFC files above that limit.
+
+The large-file view asks the server to load and parse the file directly from disk via `ifc/openFromDisk`, then routes hover, go-to-definition, and visible-range diagnostics through custom extension-side providers. Open views are pinned in the server cache; closed views stay warm until the cache budget is exceeded.
+
+Automatic large-file diagnostics are capped at the same ~50 MB threshold where VS Code stops normal extension-host document sync. Hover and navigation still work when automatic diagnostics are skipped.
+
+Cap-exceeded files are treated as read-only — the server uses the on-disk snapshot, not the editor buffer.
+
+If the language server restarts while a large-file view is open, the server-side index is rebuilt lazily on the first hover or go-to-definition request in that view rather than eagerly on restart.
 
 ### Using Local `.exp` Schemas
 

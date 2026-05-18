@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { IfcLanguageClientManager } from "./client";
+import { setupDiskOpenBridge } from "./largeFileBridge";
 import { createOutputChannel } from "./logging";
 import { resolveServer } from "./serverPath";
 
@@ -11,6 +12,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   manager = nextManager;
 
   context.subscriptions.push(output);
+
+  setupDiskOpenBridge(context, nextManager, output);
 
   context.subscriptions.push(
     vscode.commands.registerCommand("ifc.downloadLanguageServer", async () => {

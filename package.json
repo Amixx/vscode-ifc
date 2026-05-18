@@ -37,7 +37,9 @@
     "onLanguage:ifc",
     "onCommand:ifc.downloadLanguageServer",
     "onCommand:ifc.restartLanguageServer",
-    "onCommand:ifc.showResolvedServer"
+    "onCommand:ifc.showResolvedServer",
+    "onCommand:ifc.openLargeFileWithLanguageFeatures",
+    "onFileSystem:ifc-large"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -75,6 +77,10 @@
       {
         "command": "ifc.showResolvedServer",
         "title": "IFC Language Support: Show Resolved Language Server"
+      },
+      {
+        "command": "ifc.openLargeFileWithLanguageFeatures",
+        "title": "IFC Language Support: Open Large IFC with Language Features"
       }
     ],
     "configuration": {
@@ -120,6 +126,12 @@
             "type": "string"
           },
           "markdownDescription": "Optional list of local `.exp` files or directories containing `.exp` files. These paths are added to the language server's schema selection pool."
+        },
+        "ifc.largeFiles.cache.maxSourceBytesMB": {
+          "type": "number",
+          "default": 300,
+          "minimum": 1,
+          "markdownDescription": "Approximate source-text byte budget, in MB, for cached large IFC files. Actual server memory usage is higher because parsed trees and indexes are also retained. When the cache exceeds this budget, the least-recently used unopened large files are closed on the server. Currently open large-file views are pinned and are not evicted."
         },
         "ifc.trace.server": {
           "type": "string",
