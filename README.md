@@ -15,6 +15,7 @@ It combines local editor support with the IFC Language Server to provide:
 - Hover information
 - Go to definition
 - Find references
+- Semantic tokens
 
 ## Installation
 
@@ -97,6 +98,8 @@ Most users do not need to change anything. Advanced settings are available for d
 - `ifc.server.downloadAssetPattern`: Optional substring used to narrow the selected release asset.
 - `ifc.schema.overwriteExpSchemaWithLocal`: Absolute path to a local `.exp` schema file to force for diagnostics and hover.
 - `ifc.schema.addLocalSchemaToSelection`: List of local `.exp` files or directories containing `.exp` files that the language server may use for schema selection.
+- `ifc.analysis.astFileSizeLimitMb`: Maximum file size in MiB for AST-backed language-server features. Larger files keep basic hover, navigation, and semantic tokens available, but skip schema diagnostics and derived-value hover.
+- `ifc.semanticTokens.enabled`: Enable range-based semantic tokens provided by the language server.
 - `ifc.trace.server`: Trace level for the VS Code language client.
 
 Changes to IFC settings restart the language server automatically.
@@ -156,6 +159,8 @@ The extension passes local schema settings to the IFC Language Server through LS
 ```json
 {
   "ifc.schema.overwriteExpSchemaWithLocal": "/absolute/path/to/IFC4x2.exp",
+  "ifc.analysis.astFileSizeLimitMb": 128,
+  "ifc.semanticTokens.enabled": true,
   "ifc.schema.addLocalSchemaToSelection": [
     "/absolute/path/to/IFC4x1.exp",
     "/absolute/path/to/custom-schemas"

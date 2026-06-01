@@ -2,7 +2,7 @@
   "name": "vscode-ifc",
   "displayName": "IFC Language Support",
   "description": "Professional VS Code support for IFC STEP files powered by the IFC Language Server.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "nepomukwolf",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -120,6 +120,17 @@
             "type": "string"
           },
           "markdownDescription": "Optional list of local `.exp` files or directories containing `.exp` files. These paths are added to the language server's schema selection pool."
+        },
+        "ifc.analysis.astFileSizeLimitMb": {
+          "type": "number",
+          "default": 70,
+          "minimum": 0.001,
+          "markdownDescription": "Maximum IFC file size in MiB for AST-backed language-server features. Larger files keep basic hover, navigation, and semantic tokens available, but skip schema diagnostics and derived-value hover."
+        },
+        "ifc.semanticTokens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Enable range-based semantic tokens provided by the IFC language server."
         },
         "ifc.trace.server": {
           "type": "string",

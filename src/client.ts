@@ -10,6 +10,8 @@ import { resolveServer } from "./serverPath";
 interface IfcInitializationOptions {
   overwriteExpSchemaWithLocal?: string;
   addLocalSchemaToSelection?: string[];
+  astFileSizeLimitMb?: number;
+  semanticTokensEnabled?: boolean;
 }
 
 export class IfcLanguageClientManager {
@@ -96,6 +98,9 @@ function getInitializationOptions(
   if (config.addLocalSchemaToSelection.length > 0) {
     initializationOptions.addLocalSchemaToSelection = config.addLocalSchemaToSelection;
   }
+
+  initializationOptions.astFileSizeLimitMb = config.astFileSizeLimitMb;
+  initializationOptions.semanticTokensEnabled = config.semanticTokensEnabled;
 
   return initializationOptions;
 }
