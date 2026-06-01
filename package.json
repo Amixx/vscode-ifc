@@ -155,7 +155,6 @@
   },
   "files": [
     "out",
-    "node_modules",
     "syntaxes",
     "resources",
     "language-configuration.json",
@@ -164,20 +163,19 @@
     "LICENSE"
   ],
   "scripts": {
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "compile": "tsc -p ./ --noEmit && node esbuild.js",
+    "watch": "node esbuild.js --watch",
     "vscode:prepublish": "npm run compile",
     "package": "vsce package"
-  },
-  "dependencies": {
-    "adm-zip": "^0.5.16",
-    "tar": "^7.4.3",
-    "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
     "@vscode/vsce": "^3.6.2",
     "@types/node": "^20.17.50",
     "@types/vscode": "^1.93.0",
-    "typescript": "^5.9.3"
+    "adm-zip": "^0.5.16",
+    "esbuild": "^0.25.0",
+    "tar": "^7.4.3",
+    "typescript": "^5.9.3",
+    "vscode-languageclient": "^9.0.1"
   }
 }
