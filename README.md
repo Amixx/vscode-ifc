@@ -117,6 +117,7 @@ For IFC files, the extension enables these defaults:
 - `editor.colorDecorators`: disabled
 - `editor.matchBrackets`: always
 - `editor.bracketPairColorization.enabled`: enabled
+- `editor.largeFileOptimizations`: disabled
 
 You can override these in your own VS Code settings if desired.
 
