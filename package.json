@@ -1,6 +1,6 @@
 {
   "name": "vscode-ifc",
-  "displayName": "IFC Language Support",
+  "displayName": "IFC Language Tools",
   "description": "Professional VS Code support for IFC STEP files powered by the IFC Language Server.",
   "version": "0.3.2",
   "publisher": "wolfnepomuk",
