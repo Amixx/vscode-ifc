@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Update to IFC Language Server `v0.4.0`
+- Add settings for AST file size limit and semantic-token enablement
+
 ## 0.2.0
 
 - Update to IFC Language Server `v0.3.0`

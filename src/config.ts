@@ -11,6 +11,8 @@ export interface IfcExtensionConfig {
   downloadAssetPattern: string;
   overwriteExpSchemaWithLocal: string;
   addLocalSchemaToSelection: string[];
+  astFileSizeLimitMb: number;
+  semanticTokensEnabled: boolean;
   trace: Trace;
 }
 
@@ -34,6 +36,8 @@ export function getIfcConfig(): IfcExtensionConfig {
       .get<string[]>("schema.addLocalSchemaToSelection", [])
       .map((entry) => entry.trim())
       .filter((entry) => entry.length > 0),
+    astFileSizeLimitMb: config.get<number>("analysis.astFileSizeLimitMb", 70),
+    semanticTokensEnabled: config.get<boolean>("semanticTokens.enabled", true),
     trace: toTrace(config.get<string>("trace.server", "off")),
   };
 }
