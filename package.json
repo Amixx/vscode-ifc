@@ -148,8 +148,7 @@
       "[ifc]": {
         "editor.colorDecorators": false,
         "editor.matchBrackets": "always",
-        "editor.bracketPairColorization.enabled": true,
-        "editor.largeFileOptimizations": false
+        "editor.bracketPairColorization.enabled": true
       }
     }
   },
