@@ -3,7 +3,7 @@
   "displayName": "IFC Language Support",
   "description": "Professional VS Code support for IFC STEP files powered by the IFC Language Server.",
   "version": "0.3.1",
-  "publisher": "nepomukwolf",
+  "publisher": "wolfnepomuk",
   "license": "MIT",
   "icon": "resources/icon.png",
   "repository": {
