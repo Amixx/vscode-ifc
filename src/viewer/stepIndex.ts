@@ -1,0 +1,547 @@
+/**
+ * A lightweight, quote-aware index over an IFC STEP (ISO-10303-21 / "P21") file.
+ *
+ * The index is built in a single byte scan and stores only `expressId -> byte
+ * offset` (plus small buckets of relationship-instance offsets), so memory stays
+ * proportional to the number of instances rather than the file size. Instance
+ * text, types and references are sliced/parsed on demand. This keeps it usable on
+ * very large federated models (hundreds of MB) where loading the whole file into a
+ * JS string would be wasteful.
+ *
+ * STEP specifics handled here:
+ *  - Single-quoted strings with `''` escaping. `#`, `;`, `(`, `)`, `,` inside a
+ *    string must be ignored.
+ *  - `/* ... *\/` comments between/within statements.
+ *  - Instances span multiple lines and end at the first `;` at top level (STEP
+ *    forbids unescaped `;` inside argument lists outside of strings).
+ *
+ * No `vscode` import on purpose: this module is pure Node and unit-testable.
+ */
+
+// Byte constants.
+const HASH = 0x23; // #
+const SEMI = 0x3b; // ;
+const LPAREN = 0x28; // (
+const RPAREN = 0x29; // )
+const QUOTE = 0x27; // '
+const SLASH = 0x2f; // /
+const STAR = 0x2a; // *
+const EQUALS = 0x3d; // =
+const ZERO = 0x30;
+const NINE = 0x39;
+
+/** Relationship/style entity types we keep offset buckets for (inverse lookups). */
+export const REL_AGGREGATES = "IFCRELAGGREGATES";
+export const REL_NESTS = "IFCRELNESTS";
+export const REL_VOIDS = "IFCRELVOIDSELEMENT";
+export const STYLED_ITEM = "IFCSTYLEDITEM";
+const WATCHED_TYPES = new Set([REL_AGGREGATES, REL_NESTS, REL_VOIDS, STYLED_ITEM]);
+
+/** Entity types a product's `Representation` attribute legitimately points at. */
+const REPRESENTATION_HOLDERS = new Set(["IFCPRODUCTDEFINITIONSHAPE", "IFCPRODUCTREPRESENTATION"]);
+
+/**
+ * `IfcRepresentation.RepresentationType` values that carry no surface/solid the
+ * geometry engine would tessellate — curves, annotations, 2D, bounding boxes. A
+ * representation whose type is one of these produces no mesh in web-ifc, so an
+ * element whose *only* representations are these should not advertise a preview.
+ * The set is an exclusion list (not a whitelist) so the long tail of solid types
+ * — SweptSolid, Brep, AdvancedBrep, CSG, Clipping, Tessellation, SurfaceModel,
+ * MappedRepresentation, … — stays renderable without enumeration.
+ */
+const NON_RENDERABLE_REPRESENTATION_TYPES = new Set([
+  "AXIS",
+  "ANNOTATION",
+  "ANNOTATION2D",
+  "BOUNDINGBOX",
+  "BOX",
+  "FOOTPRINT",
+  "PROFILE",
+  "CURVE2D",
+  "CURVE3D",
+  "GEOMETRICCURVESET",
+  "SURVEY",
+  "REFERENCE",
+  "LIGHTSOURCE",
+]);
+
+function isDigit(b: number): boolean {
+  return b >= ZERO && b <= NINE;
+}
+
+function isKeywordByte(b: number): boolean {
+  return (
+    (b >= 0x41 && b <= 0x5a) || // A-Z
+    (b >= 0x61 && b <= 0x7a) || // a-z
+    (b >= ZERO && b <= NINE) ||
+    b === 0x5f // _
+  );
+}
+
+export interface StepIndexStats {
+  instanceCount: number;
+  schema: string | undefined;
+  projectId: number | undefined;
+}
+
+export class StepFileIndex {
+  private constructor(
+    private readonly buf: Buffer,
+    /** Byte offset immediately after the `DATA;` token (start of data section). */
+    readonly headerEndOffset: number,
+    private readonly startById: Map<number, number>,
+    private readonly relBuckets: Map<string, number[]>,
+    readonly schema: string | undefined,
+    readonly projectId: number | undefined,
+  ) {}
+
+  get instanceCount(): number {
+    return this.startById.size;
+  }
+
+  stats(): StepIndexStats {
+    return { instanceCount: this.instanceCount, schema: this.schema, projectId: this.projectId };
+  }
+
+  hasId(id: number): boolean {
+    return this.startById.has(id);
+  }
+
+  /** Verbatim header bytes (`ISO-10303-21; ... DATA;`), preserving the schema. */
+  headerBytes(): Buffer {
+    return this.buf.subarray(0, this.headerEndOffset);
+  }
+
+  /** Raw bytes of the full instance `#id=KEYWORD(...);`, or undefined if unknown.
+   *  A view into the source buffer — copy (e.g. via Buffer.concat) before mutating. */
+  sliceInstanceBytes(id: number): Buffer | undefined {
+    const start = this.startById.get(id);
+    if (start === undefined) {
+      return undefined;
+    }
+    return this.buf.subarray(start, findStatementEnd(this.buf, start));
+  }
+
+  /** The full instance text `#id=KEYWORD(...);`, or undefined if id is unknown. */
+  sliceInstance(id: number): string | undefined {
+    const start = this.startById.get(id);
+    if (start === undefined) {
+      return undefined;
+    }
+    const end = findStatementEnd(this.buf, start);
+    return this.buf.toString("latin1", start, end);
+  }
+
+  /** Uppercased entity keyword for an id (e.g. `IFCWALLSTANDARDCASE`). */
+  getType(id: number): string | undefined {
+    const start = this.startById.get(id);
+    if (start === undefined) {
+      return undefined;
+    }
+    return readTypeKeyword(this.buf, start);
+  }
+
+  /** Forward `#ref` ids appearing in this instance's arguments (excludes self). */
+  refsOf(id: number): number[] {
+    const text = this.sliceInstance(id);
+    if (text === undefined) {
+      return [];
+    }
+    const body = instanceBody(text);
+    return collectRefs(body);
+  }
+
+  /** Top-level (paren/quote-aware) argument strings of an instance. */
+  argsOf(id: number): string[] {
+    const text = this.sliceInstance(id);
+    if (text === undefined) {
+      return [];
+    }
+    return splitTopLevelArgs(instanceBody(text));
+  }
+
+  /** 0-based editor position of an id's `#` token (for reveal/scroll-to). */
+  positionOf(id: number): { line: number; character: number } | undefined {
+    const start = this.startById.get(id);
+    if (start === undefined) {
+      return undefined;
+    }
+    let line = 0;
+    let lineStart = 0;
+    for (let i = 0; i < start; i++) {
+      if (this.buf[i] === 0x0a) {
+        line++;
+        lineStart = i + 1;
+      }
+    }
+    return { line, character: start - lineStart };
+  }
+
+  /** The `Name` attribute (arg index 2 for IfcRoot entities), unquoted. */
+  nameOf(id: number): string | undefined {
+    const raw = this.argsOf(id)[2];
+    if (!raw || raw === "$" || raw === "*" || raw[0] !== "'") {
+      return undefined;
+    }
+    return raw.slice(1, raw.endsWith("'") ? -1 : undefined).replace(/''/g, "'");
+  }
+
+  /**
+   * True if the instance is a geometric product whose representation the engine
+   * would actually mesh — i.e. it should advertise a 3D preview. This deliberately
+   * mirrors what the renderer produces, so the "eye" and the geometry agree:
+   *
+   *  1. The `Representation` attribute sits at index 6 (`GlobalId, OwnerHistory,
+   *     Name, Description, ObjectType, ObjectPlacement, Representation`) for *every*
+   *     product across IFC2X3/4/4X3 — schema-agnostic, covering MEP, furniture,
+   *     proxies, assemblies, reinforcement, … rather than a fixed type list. We
+   *     require it to resolve to an `IfcProductDefinitionShape`/`IfcProductRepre-
+   *     sentation`; this rejects non-products that merely carry a `#ref` at index 6
+   *     (e.g. `IfcGeometricRepresentationSubContext`, whose `ParentContext` lands
+   *     there and would otherwise yield a preview with no geometry).
+   *  2. At least one of its representations must be renderable — not a curve/
+   *     annotation/2D/bounding-box `RepresentationType` the engine skips, which
+   *     would likewise produce an empty preview (e.g. axis-only members, grids).
+   */
+  hasRenderableRepresentation(id: number): boolean {
+    const args = this.argsOf(id);
+    if (args.length < 7) {
+      return false;
+    }
+    const representation = args[6];
+    if (!representation || representation === "$" || representation === "*") {
+      return false;
+    }
+    const shapeId = collectRefs(representation)[0];
+    if (shapeId === undefined) {
+      return false;
+    }
+    const shapeType = this.getType(shapeId);
+    if (!shapeType || !REPRESENTATION_HOLDERS.has(shapeType)) {
+      return false;
+    }
+    // IfcProductRepresentation(Name, Description, Representations) — list at index 2.
+    const reps = collectRefs(this.argsOf(shapeId)[2] ?? "");
+    return reps.some((repId) => this.isRenderableRepresentation(repId));
+  }
+
+  /** True if a representation's `RepresentationType` is one the engine tessellates. */
+  private isRenderableRepresentation(repId: number): boolean {
+    // IfcRepresentation(ContextOfItems, RepresentationIdentifier, RepresentationType, Items).
+    const repType = this.argsOf(repId)[2];
+    if (!repType || repType[0] !== "'") {
+      // Missing/unspecified type: stay permissive rather than hide real geometry.
+      return true;
+    }
+    const value = repType.slice(1, repType.endsWith("'") ? -1 : undefined).toUpperCase();
+    return !NON_RENDERABLE_REPRESENTATION_TYPES.has(value);
+  }
+
+  /** First express id (in file order) whose entity type matches one of `types`. */
+  findFirstOfType(types: Iterable<string>): number | undefined {
+    const wanted = new Set<string>();
+    for (const t of types) {
+      wanted.add(t.toUpperCase());
+    }
+    for (const [id, start] of this.startById) {
+      const type = readTypeKeyword(this.buf, start);
+      if (type && wanted.has(type)) {
+        return id;
+      }
+    }
+    return undefined;
+  }
+
+  /** Express ids of every instance of a watched relationship/style type. */
+  relIdsOfType(typeName: string): number[] {
+    const offsets = this.relBuckets.get(typeName);
+    if (!offsets) {
+      return [];
+    }
+    const ids: number[] = [];
+    for (const off of offsets) {
+      const id = readId(this.buf, off);
+      if (id !== undefined) {
+        ids.push(id);
+      }
+    }
+    return ids;
+  }
+
+  static build(buf: Buffer): StepFileIndex {
+    // Header is always small; read a bounded prefix to find `DATA;` and schema.
+    const prefixLen = Math.min(buf.length, 1 << 16);
+    const prefix = buf.toString("latin1", 0, prefixLen);
+    const dataMatch = /\bDATA\s*;/i.exec(prefix);
+    if (!dataMatch) {
+      throw new Error("Not a STEP/IFC data file: no DATA section found.");
+    }
+    const headerEndOffset = dataMatch.index + dataMatch[0].length;
+    const schemaMatch = /FILE_SCHEMA\s*\(\s*\(\s*'([^']+)'/i.exec(prefix);
+    const schema = schemaMatch ? schemaMatch[1] : undefined;
+
+    const startById = new Map<number, number>();
+    const relBuckets = new Map<string, number[]>();
+    let projectId: number | undefined;
+
+    let pos = headerEndOffset;
+    const len = buf.length;
+    while (pos < len) {
+      pos = skipTrivia(buf, pos);
+      if (pos >= len) {
+        break;
+      }
+      const b = buf[pos];
+      if (b === HASH) {
+        const start = pos;
+        const id = readId(buf, start);
+        const end = findStatementEnd(buf, start);
+        if (id !== undefined) {
+          startById.set(id, start);
+          const type = readTypeKeyword(buf, start);
+          if (type) {
+            if (type === "IFCPROJECT" && projectId === undefined) {
+              projectId = id;
+            }
+            if (WATCHED_TYPES.has(type)) {
+              const bucket = relBuckets.get(type);
+              if (bucket) {
+                bucket.push(start);
+              } else {
+                relBuckets.set(type, [start]);
+              }
+            }
+          }
+        }
+        pos = end;
+      } else if (matchesKeyword(buf, pos, "ENDSEC")) {
+        break;
+      } else {
+        // Unexpected token in DATA section; skip to the next statement end.
+        pos = findStatementEnd(buf, pos);
+      }
+    }
+
+    return new StepFileIndex(buf, headerEndOffset, startById, relBuckets, schema, projectId);
+  }
+}
+
+/** Skip whitespace and `/* *\/` comments; returns the next significant offset. */
+function skipTrivia(buf: Buffer, pos: number): number {
+  const len = buf.length;
+  while (pos < len) {
+    const b = buf[pos];
+    if (b === SLASH && pos + 1 < len && buf[pos + 1] === STAR) {
+      pos += 2;
+      while (pos + 1 < len && !(buf[pos] === STAR && buf[pos + 1] === SLASH)) {
+        pos++;
+      }
+      pos += 2;
+      continue;
+    }
+    if (b === 0x20 || b === 0x09 || b === 0x0a || b === 0x0d) {
+      pos++;
+      continue;
+    }
+    return pos;
+  }
+  return pos;
+}
+
+/** Offset just past the terminating `;` of the statement beginning at `from`. */
+function findStatementEnd(buf: Buffer, from: number): number {
+  const len = buf.length;
+  let pos = from;
+  let inString = false;
+  while (pos < len) {
+    const b = buf[pos];
+    if (inString) {
+      if (b === QUOTE) {
+        if (pos + 1 < len && buf[pos + 1] === QUOTE) {
+          pos += 2; // escaped quote
+          continue;
+        }
+        inString = false;
+      }
+      pos++;
+      continue;
+    }
+    if (b === QUOTE) {
+      inString = true;
+      pos++;
+      continue;
+    }
+    if (b === SLASH && pos + 1 < len && buf[pos + 1] === STAR) {
+      pos += 2;
+      while (pos + 1 < len && !(buf[pos] === STAR && buf[pos + 1] === SLASH)) {
+        pos++;
+      }
+      pos += 2;
+      continue;
+    }
+    if (b === SEMI) {
+      return pos + 1;
+    }
+    pos++;
+  }
+  return len;
+}
+
+/** Parse `#<digits>` at `start`; undefined if not a valid id. */
+function readId(buf: Buffer, start: number): number | undefined {
+  if (buf[start] !== HASH) {
+    return undefined;
+  }
+  let pos = start + 1;
+  let value = 0;
+  let any = false;
+  while (pos < buf.length && isDigit(buf[pos])) {
+    value = value * 10 + (buf[pos] - ZERO);
+    any = true;
+    pos++;
+  }
+  return any ? value : undefined;
+}
+
+/** Uppercased entity keyword following `#id=` for the instance at `start`. */
+function readTypeKeyword(buf: Buffer, start: number): string | undefined {
+  const len = buf.length;
+  let pos = start + 1;
+  while (pos < len && isDigit(buf[pos])) {
+    pos++;
+  }
+  pos = skipTrivia(buf, pos);
+  if (pos >= len || buf[pos] !== EQUALS) {
+    return undefined;
+  }
+  pos = skipTrivia(buf, pos + 1);
+  const ksStart = pos;
+  while (pos < len && isKeywordByte(buf[pos])) {
+    pos++;
+  }
+  if (pos === ksStart) {
+    return undefined;
+  }
+  return buf.toString("latin1", ksStart, pos).toUpperCase();
+}
+
+/** Case-insensitive check that `word` begins at `pos` (word-boundary aware). */
+function matchesKeyword(buf: Buffer, pos: number, word: string): boolean {
+  if (pos + word.length > buf.length) {
+    return false;
+  }
+  for (let i = 0; i < word.length; i++) {
+    const b = buf[pos + i];
+    const upper = b >= 0x61 && b <= 0x7a ? b - 0x20 : b;
+    if (upper !== word.charCodeAt(i)) {
+      return false;
+    }
+  }
+  const after = pos + word.length < buf.length ? buf[pos + word.length] : 0;
+  return !isKeywordByte(after);
+}
+
+/** Substring between the outermost parentheses of an instance text. */
+export function instanceBody(text: string): string {
+  const open = text.indexOf("(");
+  if (open < 0) {
+    return "";
+  }
+  let depth = 0;
+  let inString = false;
+  for (let i = open; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (inString) {
+      if (c === QUOTE) {
+        if (text.charCodeAt(i + 1) === QUOTE) {
+          i++;
+          continue;
+        }
+        inString = false;
+      }
+      continue;
+    }
+    if (c === QUOTE) {
+      inString = true;
+    } else if (c === LPAREN) {
+      depth++;
+    } else if (c === RPAREN) {
+      depth--;
+      if (depth === 0) {
+        return text.slice(open + 1, i);
+      }
+    }
+  }
+  return text.slice(open + 1);
+}
+
+/** Split a parenthesised body into top-level args (paren/quote-aware). */
+export function splitTopLevelArgs(body: string): string[] {
+  const args: string[] = [];
+  let depth = 0;
+  let inString = false;
+  let start = 0;
+  for (let i = 0; i < body.length; i++) {
+    const c = body.charCodeAt(i);
+    if (inString) {
+      if (c === QUOTE) {
+        if (body.charCodeAt(i + 1) === QUOTE) {
+          i++;
+          continue;
+        }
+        inString = false;
+      }
+      continue;
+    }
+    if (c === QUOTE) {
+      inString = true;
+    } else if (c === LPAREN) {
+      depth++;
+    } else if (c === RPAREN) {
+      depth--;
+    } else if (c === 0x2c /* , */ && depth === 0) {
+      args.push(body.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  args.push(body.slice(start).trim());
+  return args;
+}
+
+/** Collect all `#<digits>` references in a string, ignoring those in strings. */
+export function collectRefs(s: string): number[] {
+  const refs: number[] = [];
+  let inString = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (inString) {
+      if (c === QUOTE) {
+        if (s.charCodeAt(i + 1) === QUOTE) {
+          i++;
+          continue;
+        }
+        inString = false;
+      }
+      continue;
+    }
+    if (c === QUOTE) {
+      inString = true;
+      continue;
+    }
+    if (c === HASH) {
+      let j = i + 1;
+      let value = 0;
+      let any = false;
+      while (j < s.length && s.charCodeAt(j) >= ZERO && s.charCodeAt(j) <= NINE) {
+        value = value * 10 + (s.charCodeAt(j) - ZERO);
+        any = true;
+        j++;
+      }
+      if (any) {
+        refs.push(value);
+        i = j - 1;
+      }
+    }
+  }
+  return refs;
+}

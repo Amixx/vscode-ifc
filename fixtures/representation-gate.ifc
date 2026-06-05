@@ -1,0 +1,50 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION((''),'2;1');
+FILE_NAME('representation-gate.ifc','',(''),(''),'','','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+#9= IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,$,$,$);
+/* #10: ParentContext (#9) at arg index 6 -> not renderable */
+#10= IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#9,$,.MODEL_VIEW.,$);
+
+/* #100: SweptSolid body, spaced `= ` -> renderable */
+#100= IFCWALL('wall-body',$,'Body wall',$,$,#101,#102,$);
+#101= IFCLOCALPLACEMENT($,$);
+#102= IFCPRODUCTDEFINITIONSHAPE($,$,(#103));
+#103= IFCSHAPEREPRESENTATION(#9,'Body','SweptSolid',(#104));
+#104= IFCEXTRUDEDAREASOLID($,$,$,1.);
+
+/* #200: Curve2D axis only -> not renderable */
+#200=IFCWALL('wall-axis',$,'Axis wall',$,$,#201,#202,$);
+#201=IFCLOCALPLACEMENT($,$);
+#202=IFCPRODUCTDEFINITIONSHAPE($,$,(#203));
+#203=IFCSHAPEREPRESENTATION(#9,'Axis','Curve2D',(#204));
+#204=IFCPOLYLINE(());
+
+/* #300: axis + body -> renderable */
+#300=IFCWALL('wall-mixed',$,'Mixed wall',$,$,#301,#302,$);
+#301=IFCLOCALPLACEMENT($,$);
+#302=IFCPRODUCTDEFINITIONSHAPE($,$,(#303,#305));
+#303=IFCSHAPEREPRESENTATION(#9,'Axis','Curve2D',(#304));
+#304=IFCPOLYLINE(());
+#305=IFCSHAPEREPRESENTATION(#9,'Body','SweptSolid',(#306));
+#306=IFCEXTRUDEDAREASOLID($,$,$,1.);
+
+/* #400: no representation ($) -> not renderable */
+#400=IFCWALL('wall-none',$,'No-rep wall',$,$,#401,$,$);
+#401=IFCLOCALPLACEMENT($,$);
+
+/* #500: proxy with Brep body -> renderable */
+#500=IFCBUILDINGELEMENTPROXY('proxy-brep',$,'Proxy',$,$,#501,#502,$);
+#501=IFCLOCALPLACEMENT($,$);
+#502=IFCPRODUCTDEFINITIONSHAPE($,$,(#503));
+#503=IFCSHAPEREPRESENTATION(#9,'Body','Brep',(#504));
+#504=IFCFACETEDBREP($);
+
+/* #600: arg 6 resolves to a context, not a shape holder -> not renderable */
+#600=IFCWALL('wall-badref',$,'Bad-ref wall',$,$,#601,#9,$);
+#601=IFCLOCALPLACEMENT($,$);
+ENDSEC;
+END-ISO-10303-21;
