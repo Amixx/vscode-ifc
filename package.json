@@ -162,7 +162,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "compile": "tsc -p ./ --noEmit && node esbuild.js",
+    "compile": "tsc -p ./ --noEmit && tsc -p media/viewer/tsconfig.json --noEmit && node esbuild.js",
     "watch": "node esbuild.js --watch",
     "build:test": "esbuild src/viewer/*.test.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --outdir=out/test",
     "test": "npm run build:test && node --test out/test/*.test.js",
@@ -170,13 +170,21 @@
     "package": "vsce package"
   },
   "devDependencies": {
-    "@vscode/vsce": "^3.6.2",
     "@types/node": "^20.17.50",
+    "@types/three": "^0.184.0",
     "@types/vscode": "^1.93.0",
+    "@vscode/vsce": "^3.6.2",
     "adm-zip": "^0.5.16",
     "esbuild": "^0.25.0",
     "tar": "^7.4.3",
+    "three": "^0.184.0",
     "typescript": "^5.9.3",
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^9.0.1",
+    "web-ifc": "^0.0.77"
+  },
+  "dependencies": {
+    "@ifc-lite/geometry": "^2.0.0",
+    "@ifc-lite/renderer": "^1.23.1",
+    "@thatopen/components": "^3.4.6"
   }
 }
