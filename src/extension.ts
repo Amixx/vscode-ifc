@@ -2,6 +2,16 @@ import * as vscode from "vscode";
 import { IfcLanguageClientManager } from "./client";
 import { createOutputChannel } from "./logging";
 import { resolveServer } from "./serverPath";
+import { registerViewer } from "./viewer";
+
+/** Configuration sections that require a language-server restart when changed. */
+const SERVER_CONFIG_SECTIONS = [
+  "ifc.server",
+  "ifc.schema",
+  "ifc.analysis",
+  "ifc.semanticTokens",
+  "ifc.trace",
+];
 
 let manager: IfcLanguageClientManager | undefined;
 
@@ -11,6 +21,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   manager = nextManager;
 
   context.subscriptions.push(output);
+
+  registerViewer(context, output);
 
   context.subscriptions.push(
     vscode.commands.registerCommand("ifc.downloadLanguageServer", async () => {
@@ -54,7 +66,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async (event) => {
-      if (!event.affectsConfiguration("ifc")) {
+      const affectsServer = SERVER_CONFIG_SECTIONS.some((section) =>
+        event.affectsConfiguration(section),
+      );
+      if (!affectsServer) {
         return;
       }
 

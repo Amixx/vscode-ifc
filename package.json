@@ -37,7 +37,8 @@
     "onLanguage:ifc",
     "onCommand:ifc.downloadLanguageServer",
     "onCommand:ifc.restartLanguageServer",
-    "onCommand:ifc.showResolvedServer"
+    "onCommand:ifc.showResolvedServer",
+    "onCommand:ifc.viewElement"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -75,8 +76,36 @@
       {
         "command": "ifc.showResolvedServer",
         "title": "IFC Language Support: Show Resolved Language Server"
+      },
+      {
+        "command": "ifc.viewElement",
+        "title": "Preview Element in 3D",
+        "category": "IFC",
+        "icon": "$(eye)"
       }
     ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "ifc.viewElement",
+          "when": "resourceLangId == ifc",
+          "group": "navigation@99"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "ifc.viewElement",
+          "when": "resourceLangId == ifc",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "ifc.viewElement",
+          "when": "resourceLangId == ifc"
+        }
+      ]
+    },
     "configuration": {
       "title": "IFC Language Support",
       "properties": {
@@ -141,6 +170,22 @@
           ],
           "default": "off",
           "markdownDescription": "Trace level for the IFC language server protocol traffic."
+        },
+        "ifc.viewer.includeChildren": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When previewing an element in 3D, also include its decomposition/assembly children (for example a stair's flights or a roof's slabs)."
+        },
+        "ifc.viewer.codeLens": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show a `Preview in 3D` CodeLens above every element that has geometry (any product with a shape — walls, ducts, furniture, assemblies, …). On large files the lens follows the editor viewport so it stays responsive; it is bounded by `#ifc.viewer.maxFileSizeMb#`."
+        },
+        "ifc.viewer.maxFileSizeMb": {
+          "type": "number",
+          "default": 400,
+          "minimum": 1,
+          "markdownDescription": "Maximum IFC file size (MiB) the 3D preview will index. Only the selected element is rendered, but the file is scanned once to extract it."
         }
       }
     },
