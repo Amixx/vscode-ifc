@@ -198,7 +198,9 @@
     }
   },
   "files": [
-    "out",
+    "out/**/*.js",
+    "out/**/*.wasm",
+    "out/**/*.css",
     "syntaxes",
     "resources",
     "language-configuration.json",
