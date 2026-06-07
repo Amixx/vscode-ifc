@@ -13,8 +13,16 @@
       "trailingCommas": "all"
     }
   },
-  "linter": {
+  "assist": {
     "enabled": false
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "style": {
+        "useImportType": "off"
+      }
+    }
   },
   "files": {
     "includes": ["src/**/*.ts", "esbuild.js", "package.json"]

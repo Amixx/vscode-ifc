@@ -163,6 +163,8 @@
   ],
   "scripts": {
     "compile": "tsc -p ./ --noEmit && node esbuild.js",
+    "check": "biome check .",
+    "check:write": "biome check --write .",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "watch": "node esbuild.js --watch",
