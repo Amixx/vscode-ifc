@@ -31,3 +31,6 @@ jobs:
 
       - name: Compile
         run: npm run compile
+
+      - name: Verify packaging
+        run: npm run package
