@@ -1,9 +1,5 @@
 import * as vscode from "vscode";
-import {
-  LanguageClient,
-  LanguageClientOptions,
-  ServerOptions,
-} from "vscode-languageclient/node";
+import { LanguageClient, LanguageClientOptions, ServerOptions } from "vscode-languageclient/node";
 import { IfcExtensionConfig, getIfcConfig } from "./config";
 import { resolveServer } from "./serverPath";
 
@@ -86,9 +82,7 @@ export class IfcLanguageClientManager {
   }
 }
 
-function getInitializationOptions(
-  config: IfcExtensionConfig,
-): IfcInitializationOptions {
+function getInitializationOptions(config: IfcExtensionConfig): IfcInitializationOptions {
   const initializationOptions: IfcInitializationOptions = {};
 
   if (config.overwriteExpSchemaWithLocal) {
