@@ -1,5 +1,7 @@
 import "./viewer.css";
+import { render as renderHtml } from "lit-html";
 import { createRenderEngine, RenderEngine } from "./engine";
+import { viewerTemplate, type ViewerTemplateState } from "./template";
 import type { EngineKind, HostToWebview, LoadMessage, WebviewToHost } from "../../src/viewer/protocol";
 
 declare function acquireVsCodeApi(): { postMessage(message: WebviewToHost): void };
@@ -11,90 +13,56 @@ function post(message: WebviewToHost): void {
 }
 
 class Viewer {
+  private readonly root: HTMLElement;
   private readonly canvasHost: HTMLElement;
-  private readonly hudTitle: HTMLElement;
-  private readonly hudSub: HTMLElement;
-  private readonly hudStats: HTMLElement;
-  private readonly hudWarn: HTMLElement;
-  private readonly overlay: HTMLElement;
 
   private engine: RenderEngine | undefined;
   private activeEngine: EngineKind = "web-ifc";
-  private engineButton: HTMLButtonElement | undefined;
   private lastMessage: LoadMessage | undefined;
   private renderSeq = 0;
   private lastFrame = performance.now();
   private activeLoadStage = "";
+  private resizeObserver: ResizeObserver | undefined;
+  private animationFrame = 0;
+
+  private hudTitle = "";
+  private hudSub = "";
+  private hudStats = "";
+  private hudWarn = "";
+  private overlayText = "";
+  private overlayBusy = false;
 
   constructor(root: HTMLElement) {
-    this.canvasHost = el("div", "viewer-canvas");
-    const hud = el("div", "hud");
-    this.hudTitle = el("div", "hud-title");
-    this.hudSub = el("div", "hud-sub");
-    this.hudStats = el("div", "hud-stats");
-    this.hudWarn = el("div", "hud-warn");
-    hud.append(this.hudTitle, this.hudSub, this.hudStats, this.hudWarn);
-
-    const toolbar = this.buildToolbar();
-    this.overlay = el("div", "state-overlay");
-    const hint = el("div", "hint");
-    hint.textContent = "Click geometry to jump to its source line · drag to orbit · scroll to zoom";
-    root.append(this.canvasHost, hud, toolbar, this.overlay, hint);
-
-    new ResizeObserver(() => this.resize()).observe(this.canvasHost);
-    this.canvasHost.addEventListener("pointerdown", (event) => this.onPointerDown(event));
-    this.canvasHost.addEventListener("pointerup", (event) => void this.onPointerUp(event));
-
+    this.root = root;
+    this.renderChrome();
+    this.canvasHost = this.findCanvasHost();
+    this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.resizeObserver.observe(this.canvasHost);
     this.resize();
-    this.animate();
+    this.tick();
   }
 
-  private buildToolbar(): HTMLElement {
-    const bar = el("div", "toolbar");
-    const buttons: Array<[string, string, () => void]> = [
-      ["Fit", "Frame the element", () => void this.currentEngine()?.fit()],
-      ["Reset", "Reset the camera", () => void this.currentEngine()?.reset()],
-    ];
-    for (const [label, title, action] of buttons) {
-      const button = el("button", "tool-button");
-      button.textContent = label;
-      button.title = title;
-      button.addEventListener("click", action);
-      bar.appendChild(button);
-    }
-
-    const engineButton = el("button", "tool-button") as HTMLButtonElement;
-    engineButton.title = "Switch renderer (ThatOpen/web-ifc ↔ ifc-lite)";
-    engineButton.addEventListener("click", () => void this.toggleEngine());
-    bar.appendChild(engineButton);
-    this.engineButton = engineButton;
-    this.updateEngineButton();
-    return bar;
-  }
-
-  private updateEngineButton(): void {
-    if (!this.engineButton) {
-      return;
-    }
-    this.engineButton.textContent = `Engine: ${this.activeEngine}`;
-    this.engineButton.disabled = this.lastMessage === undefined;
+  dispose(): void {
+    this.resizeObserver?.disconnect();
+    cancelAnimationFrame(this.animationFrame);
+    this.engine?.dispose();
   }
 
   async render(message: LoadMessage): Promise<void> {
     this.lastMessage = message;
     this.activeEngine = message.engine;
-    this.updateEngineButton();
+    this.renderChrome();
     await this.renderWith(message.engine);
   }
 
-  private async toggleEngine(): Promise<void> {
+  private readonly toggleEngine = async (): Promise<void> => {
     if (!this.lastMessage) {
       return;
     }
     this.activeEngine = this.activeEngine === "ifc-lite" ? "web-ifc" : "ifc-lite";
-    this.updateEngineButton();
+    this.renderChrome();
     await this.renderWith(this.activeEngine);
-  }
+  };
 
   private async renderWith(engineKind: EngineKind): Promise<void> {
     const message = this.lastMessage;
@@ -130,10 +98,11 @@ class Viewer {
 
       this.setOverlay("", false);
       const elapsedMs = Math.round(performance.now() - started);
-      this.hudStats.textContent =
+      this.hudStats =
         `${stats.meshes} mesh${stats.meshes === 1 ? "" : "es"}` +
         (stats.triangles === undefined ? "" : ` · ${stats.triangles.toLocaleString()} tris`) +
         ` · ${engineKind} · ${elapsedMs} ms`;
+      this.renderChrome();
       post({
         type: "status",
         token: message.token,
@@ -183,16 +152,32 @@ class Viewer {
     return this.engine;
   }
 
-  private onPointerDown(event: PointerEvent): void {
+  private findCanvasHost(): HTMLElement {
+    const canvasHost = this.root.querySelector<HTMLElement>(".viewer-canvas");
+    if (!canvasHost) {
+      throw new Error("Viewer canvas host is not mounted.");
+    }
+    return canvasHost;
+  }
+
+  private readonly fit = (): void => {
+    void this.currentEngine()?.fit();
+  };
+
+  private readonly reset = (): void => {
+    void this.currentEngine()?.reset();
+  };
+
+  private readonly onPointerDown = (event: PointerEvent): void => {
     const canvas = this.currentEngine()?.canvas;
     if (!canvas) {
       return;
     }
     canvas.dataset.pointerDownX = String(event.clientX);
     canvas.dataset.pointerDownY = String(event.clientY);
-  }
+  };
 
-  private async onPointerUp(event: PointerEvent): Promise<void> {
+  private readonly onPointerUp = async (event: PointerEvent): Promise<void> => {
     const engine = this.currentEngine();
     if (!engine) {
       return;
@@ -206,13 +191,13 @@ class Viewer {
     if (typeof expressId === "number") {
       post({ type: "pick", expressId });
     }
-  }
+  };
 
   private setHud(message: LoadMessage): void {
-    this.hudTitle.textContent = `${message.rootType ?? "Element"} #${message.rootId}`;
+    this.hudTitle = `${message.rootType ?? "Element"} #${message.rootId}`;
     const bits = [message.rootName, message.schema, message.fileName].filter(Boolean);
-    this.hudSub.textContent = bits.join(" · ");
-    this.hudStats.textContent = "";
+    this.hudSub = bits.join(" · ");
+    this.hudStats = "";
     const warnings: string[] = [];
     if (message.childCount > 0) {
       warnings.push(`+${message.childCount} child element${message.childCount === 1 ? "" : "s"}`);
@@ -220,13 +205,14 @@ class Viewer {
     if (message.truncated) {
       warnings.push("⚠ extraction truncated (very large element)");
     }
-    this.hudWarn.textContent = warnings.join(" · ");
+    this.hudWarn = warnings.join(" · ");
+    this.renderChrome();
   }
 
   private setOverlay(text: string, busy: boolean): void {
-    this.overlay.textContent = text;
-    this.overlay.classList.toggle("busy", busy);
-    this.overlay.style.display = text || busy ? "flex" : "none";
+    this.overlayText = text;
+    this.overlayBusy = busy;
+    this.renderChrome();
   }
 
   private resize(): void {
@@ -239,19 +225,39 @@ class Viewer {
     engine.resize(this.canvasHost.clientWidth || 1, this.canvasHost.clientHeight || 1);
   }
 
-  private animate = (): void => {
-    requestAnimationFrame(this.animate);
+  private tick = (): void => {
+    this.animationFrame = requestAnimationFrame(this.tick);
     const now = performance.now();
     const delta = now - this.lastFrame;
     this.lastFrame = now;
     this.currentEngine()?.update(delta);
   };
-}
 
-function el(tag: string, className: string): HTMLElement {
-  const node = document.createElement(tag);
-  node.className = className;
-  return node;
+  private renderChrome(): void {
+    renderHtml(
+      viewerTemplate(this.templateState(), {
+        onPointerDown: this.onPointerDown,
+        onPointerUp: this.onPointerUp,
+        onFit: this.fit,
+        onReset: this.reset,
+        onToggleEngine: this.toggleEngine,
+      }),
+      this.root,
+    );
+  }
+
+  private templateState(): ViewerTemplateState {
+    return {
+      hudTitle: this.hudTitle,
+      hudSub: this.hudSub,
+      hudStats: this.hudStats,
+      hudWarn: this.hudWarn,
+      overlayText: this.overlayText,
+      overlayBusy: this.overlayBusy,
+      activeEngine: this.activeEngine,
+      hasMessage: this.lastMessage !== undefined,
+    };
+  }
 }
 
 const app = document.getElementById("app");
@@ -263,5 +269,6 @@ if (app) {
       void viewer.render(message);
     }
   });
+  window.addEventListener("unload", () => viewer.dispose());
   post({ type: "ready" });
 }
