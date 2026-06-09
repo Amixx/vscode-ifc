@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { IfcLanguageClientManager } from "./client";
+import { registerVisibleIdHighlight } from "./idHighlight";
 import { createOutputChannel } from "./logging";
 import { resolveServer } from "./serverPath";
 
@@ -11,6 +12,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   manager = nextManager;
 
   context.subscriptions.push(output);
+  registerVisibleIdHighlight(context);
 
   context.subscriptions.push(
     vscode.commands.registerCommand("ifc.downloadLanguageServer", async () => {
