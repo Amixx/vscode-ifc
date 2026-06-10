@@ -59,6 +59,8 @@ class ViewerController implements vscode.CodeLensProvider {
   private readonly indexCache = new Map<string, CacheEntry>();
   private panel: IfcViewerPanel | undefined;
   private lastSourceUri: vscode.Uri | undefined;
+  /** Rendered-id -> source-id for the current preview (see SubModelResult.pickRemap). */
+  private lastPickRemap: Map<number, number> = new Map();
   private token = 0;
   private lensRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -125,7 +127,15 @@ class ViewerController implements vscode.CodeLensProvider {
         if (!index.hasId(id)) {
           throw new Error(`#${id} is not defined in ${path.basename(uri.fsPath)}.`);
         }
+        if (!index.isPreviewable(id, config.includeChildren)) {
+          const type = index.getType(id) ?? "element";
+          throw new Error(
+            `#${id} (${type}) has no renderable geometry — pick an element with geometry, ` +
+              `or a container (storey/building) that holds some.`,
+          );
+        }
         const sub = extractSubModel(index, id, { includeChildren: config.includeChildren });
+        this.lastPickRemap = sub.pickRemap;
         return {
           type: "load",
           token: ++this.token,
@@ -181,8 +191,10 @@ class ViewerController implements vscode.CodeLensProvider {
     if (!uri) {
       return;
     }
+    // A picked synthetic wrapper resolves back to the real geometry item it previews.
+    const sourceId = this.lastPickRemap.get(expressId) ?? expressId;
     const cached = uri.scheme === "file" ? this.indexCache.get(uri.fsPath) : undefined;
-    const pos = cached?.index.positionOf(expressId);
+    const pos = cached?.index.positionOf(sourceId);
     const editor = await vscode.window.showTextDocument(uri, {
       viewColumn: vscode.ViewColumn.One,
       preserveFocus: false,
@@ -239,7 +251,7 @@ class ViewerController implements vscode.CodeLensProvider {
           continue;
         }
         const id = Number.parseInt(match[1], 10);
-        if (!index.hasRenderableRepresentation(id)) {
+        if (!index.isPreviewable(id, config.includeChildren)) {
           continue;
         }
         lenses.push(

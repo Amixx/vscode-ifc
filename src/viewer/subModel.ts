@@ -9,14 +9,7 @@
  *
  * Pure Node (no `vscode`): unit-testable against `test-files/`.
  */
-import {
-  REL_AGGREGATES,
-  REL_NESTS,
-  REL_VOIDS,
-  STYLED_ITEM,
-  StepFileIndex,
-  collectRefs,
-} from "./stepIndex";
+import { REL_VOIDS, STYLED_ITEM, StepFileIndex, collectRefs } from "./stepIndex";
 
 export interface SubModelOptions {
   /** Include decomposition/assembly descendants (IfcRelAggregates/IfcRelNests). */
@@ -44,11 +37,33 @@ export interface SubModelResult {
   childCount: number;
   /** True if the instance cap was hit (result may be incomplete). */
   truncated: boolean;
+  /**
+   * Maps a rendered express id back to the source id whose line should be
+   * revealed on pick. Empty for ordinary products (their rendered id *is* the
+   * source id); for a previewed bare geometry item it maps the synthetic wrapper
+   * product to the real item, so pick-to-reveal still lands on the source line.
+   */
+  pickRemap: Map<number, number>;
 }
 
-const DEFAULT_MAX_INSTANCES = 200_000;
+// A logical upper bound from some perf tests. Maybe useful to tune later.
+const DEFAULT_MAX_INSTANCES = 500_000;
 const ARG_RELATING = 4; // RelatingObject / RelatingBuildingElement
 const ARG_RELATED = 5; // RelatedObjects / RelatedOpeningElement
+/** A valid-charset 22-char IFC GlobalId for synthetic wrapper products. */
+const PREVIEW_GUID = "0previewprimitive00000";
+/**
+ * Non-physical products that web-ifc's `StreamAllMeshes` skips even though they
+ * carry real `Body` geometry — openings are subtractions, spaces are void volumes.
+ * ifc-lite meshes them as ordinary solids; we bring web-ifc to parity by
+ * re-presenting their shape under a synthetic proxy (see the wrapper below).
+ */
+const WEB_IFC_SKIPPED_PRODUCT_TYPES = new Set([
+  "IFCOPENINGELEMENT",
+  "IFCOPENINGSTANDARDCASE",
+  "IFCSPACE",
+  "IFCSPATIALZONE",
+]);
 
 function firstRef(arg: string | undefined): number | undefined {
   if (!arg) {
@@ -104,32 +119,31 @@ export function extractSubModel(
     addClosure([index.projectId]);
   }
 
-  // 3. Decomposition/assembly descendants. Walk aggregate/nest rels whose
-  //    RelatingObject is something already in scope, pulling in their children.
+  // 3. Descendants. BFS the combined decomposition + spatial-containment graph:
+  //    assembly parts (IfcStair -> flights) and, for a spatial container, every
+  //    physical element on it (IfcRelContainedInSpatialStructure). Spatial
+  //    containers/spaces are recursed *through* but never rendered — they carry no
+  //    geometry of their own and (since ifc-lite draws everything in the file) we
+  //    keep their volumes out of the sub-model for parity with web-ifc.
   let childCount = 0;
   if (includeChildren && !truncated) {
-    const objectScope = new Set<number>([rootId]);
-    const aggregateRels = [
-      ...index.relIdsOfType(REL_AGGREGATES),
-      ...index.relIdsOfType(REL_NESTS),
-    ];
-    let grew = true;
-    let guard = 0;
-    while (grew && !truncated && guard++ < 64) {
-      grew = false;
-      for (const relId of aggregateRels) {
-        const args = index.argsOf(relId);
-        const relating = firstRef(args[ARG_RELATING]);
-        if (relating === undefined || !objectScope.has(relating)) {
+    const visited = new Set<number>([rootId]);
+    const queue = [rootId];
+    while (queue.length > 0 && !truncated) {
+      const parent = queue.shift() as number;
+      for (const child of index.decompositionChildrenOf(parent)) {
+        if (visited.has(child) || !index.hasId(child)) {
           continue;
         }
-        for (const child of collectRefs(args[ARG_RELATED] ?? "")) {
-          if (!objectScope.has(child) && index.hasId(child)) {
-            objectScope.add(child);
-            renderIds.add(child);
-            childCount++;
-            grew = true;
-            addClosure([child]);
+        visited.add(child);
+        queue.push(child); // recurse even through containers, to reach their contents
+        if (!index.isSpatialContainer(child)) {
+          renderIds.add(child);
+          childCount++;
+          addClosure([child]);
+          if (included.size >= maxInstances) {
+            truncated = true;
+            break;
           }
         }
       }
@@ -164,8 +178,71 @@ export function extractSubModel(
     }
   }
 
+  // 6. Bare geometry item (a brep/solid/tessellation, not a product). Both engines
+  //    only mesh products, so wrap the item in a synthetic IfcBuildingElementProxy
+  //    + shape representation. The item keeps its real id (so its closure renders
+  //    unchanged); pick-to-reveal maps the wrapper back to it via `pickRemap`.
+  const pickRemap = new Map<number, number>();
+  const extraLines: string[] = [];
+  const itemRepType = index.geometryItemRepType(rootId);
+  if (itemRepType !== undefined && !truncated) {
+    let nextId = index.maxExpressId() + 1;
+    const alloc = (): number => nextId++;
+
+    // Anchor in an existing 3D context if the file has one (pulled in via the
+    // project closure); otherwise mint a minimal context so the rep stands alone.
+    let contextId = index.geometricContextId();
+    if (contextId !== undefined) {
+      addClosure([contextId]);
+    } else {
+      const originId = alloc();
+      const wcsId = alloc();
+      contextId = alloc();
+      extraLines.push(`#${originId}=IFCCARTESIANPOINT((0.,0.,0.));`);
+      extraLines.push(`#${wcsId}=IFCAXIS2PLACEMENT3D(#${originId},$,$);`);
+      extraLines.push(`#${contextId}=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-5,#${wcsId},$);`);
+    }
+
+    const shapeRepId = alloc();
+    const prodDefId = alloc();
+    const productId = alloc();
+    extraLines.push(`#${shapeRepId}=IFCSHAPEREPRESENTATION(#${contextId},'Body','${itemRepType}',(#${rootId}));`);
+    extraLines.push(`#${prodDefId}=IFCPRODUCTDEFINITIONSHAPE($,$,(#${shapeRepId}));`);
+    extraLines.push(
+      `#${productId}=IFCBUILDINGELEMENTPROXY('${PREVIEW_GUID}',$,'Geometry Preview',$,$,$,#${prodDefId},$,$);`,
+    );
+
+    renderIds.clear();
+    renderIds.add(productId);
+    pickRemap.set(productId, rootId);
+  }
+
+  // 7. Openings/spaces: products with real geometry that web-ifc won't stream (but
+  //    ifc-lite does). Re-present their existing shape + placement under a synthetic
+  //    proxy so web-ifc meshes the volume too — engine parity. Renders the opening
+  //    as its solid "plug"; pick-to-reveal maps the proxy back to the source.
+  const rootType = index.getType(rootId);
+  if (itemRepType === undefined && !truncated && rootType && WEB_IFC_SKIPPED_PRODUCT_TYPES.has(rootType)) {
+    const args = index.argsOf(rootId);
+    const shapeRef = collectRefs(args[6] ?? "")[0]; // Representation -> IfcProductDefinitionShape
+    if (shapeRef !== undefined && index.hasId(shapeRef)) {
+      const placement = args[5]?.startsWith("#") ? args[5] : "$"; // reuse ObjectPlacement if present
+      const productId = index.maxExpressId() + 1;
+      extraLines.push(
+        `#${productId}=IFCBUILDINGELEMENTPROXY('${PREVIEW_GUID}',$,'Geometry Preview',$,$,${placement},#${shapeRef},$,$);`,
+      );
+      // Drop the original space/opening instance so ifc-lite (which renders every
+      // product in the file) doesn't draw the volume twice; the proxy reuses its
+      // still-present shape + placement. Any contained elements stay in renderIds.
+      included.delete(rootId);
+      renderIds.delete(rootId);
+      renderIds.add(productId);
+      pickRemap.set(productId, rootId);
+    }
+  }
+
   const includedIds = [...included].sort((a, b) => a - b);
-  const ifcBytes = assemble(index, includedIds);
+  const ifcBytes = assemble(index, includedIds, extraLines);
 
   return {
     ifcBytes,
@@ -176,6 +253,7 @@ export function extractSubModel(
     includedIds,
     childCount,
     truncated,
+    pickRemap,
   };
 }
 
@@ -183,7 +261,7 @@ export function extractSubModel(
  *  the original bytes verbatim (no latin1/UTF-8 round-trip) so non-ASCII content
  *  survives intact on its way to the geometry engine. Returns an exact-sized
  *  ArrayBuffer (Buffer.concat may sit in a shared pool, so slice to our bytes). */
-function assemble(index: StepFileIndex, ids: number[]): ArrayBuffer {
+function assemble(index: StepFileIndex, ids: number[], extraLines: readonly string[] = []): ArrayBuffer {
   const NL = Buffer.from("\n");
   const parts: Buffer[] = [index.headerBytes()];
   for (const id of ids) {
@@ -191,6 +269,10 @@ function assemble(index: StepFileIndex, ids: number[]): ArrayBuffer {
     if (bytes) {
       parts.push(NL, bytes);
     }
+  }
+  // Synthetic wrapper instances (ASCII-only) appended after the verbatim source.
+  for (const line of extraLines) {
+    parts.push(NL, Buffer.from(line, "latin1"));
   }
   parts.push(Buffer.from("\nENDSEC;\nEND-ISO-10303-21;\n"));
   const out = Buffer.concat(parts);
