@@ -1,8 +1,9 @@
 import "./viewer.css";
 import { render as renderHtml } from "lit-html";
-import { createRenderEngine, RenderEngine } from "./engine";
+import type { RenderEngine } from "./engine";
+import { ThatOpenEngine } from "./thatopen-engine";
 import { viewerTemplate, type ViewerTemplateState } from "./template";
-import type { EngineKind, HostToWebview, LoadMessage, WebviewToHost } from "../../src/viewer/protocol";
+import type { HostToWebview, LoadMessage, WebviewToHost } from "../../src/viewer/protocol";
 
 declare function acquireVsCodeApi(): { postMessage(message: WebviewToHost): void };
 
@@ -17,8 +18,6 @@ class Viewer {
   private readonly canvasHost: HTMLElement;
 
   private engine: RenderEngine | undefined;
-  private activeEngine: EngineKind = "web-ifc";
-  private lastMessage: LoadMessage | undefined;
   private renderSeq = 0;
   private lastFrame = performance.now();
   private activeLoadStage = "";
@@ -49,33 +48,18 @@ class Viewer {
   }
 
   async render(message: LoadMessage): Promise<void> {
-    this.lastMessage = message;
-    this.activeEngine = message.engine;
     this.renderChrome();
-    await this.renderWith(message.engine);
+    await this.renderWith(message);
   }
 
-  private readonly toggleEngine = async (): Promise<void> => {
-    if (!this.lastMessage) {
-      return;
-    }
-    this.activeEngine = this.activeEngine === "ifc-lite" ? "web-ifc" : "ifc-lite";
-    this.renderChrome();
-    await this.renderWith(this.activeEngine);
-  };
-
-  private async renderWith(engineKind: EngineKind): Promise<void> {
-    const message = this.lastMessage;
-    if (!message) {
-      return;
-    }
+  private async renderWith(message: LoadMessage): Promise<void> {
     const seq = ++this.renderSeq;
     this.activeLoadStage = "";
-    this.setOverlay(`Loading with ${engineKind}…`, true);
+    this.setOverlay("Loading…", true);
     this.setHud(message);
     const started = performance.now();
     try {
-      const engine = this.getEngine(engineKind);
+      const engine = this.getEngine();
       const stats = await engine.load({
         bytes: new Uint8Array(message.ifcBytes),
         rootId: message.rootId,
@@ -91,7 +75,6 @@ class Viewer {
           token: message.token,
           state: "empty",
           message: `#${message.rootId} ${message.rootType ?? ""} produced no geometry.`,
-          engine: engineKind,
         });
         return;
       }
@@ -101,7 +84,7 @@ class Viewer {
       this.hudStats =
         `${stats.meshes} mesh${stats.meshes === 1 ? "" : "es"}` +
         (stats.triangles === undefined ? "" : ` · ${stats.triangles.toLocaleString()} tris`) +
-        ` · ${engineKind} · ${elapsedMs} ms`;
+        ` · ${elapsedMs} ms`;
       this.renderChrome();
       post({
         type: "status",
@@ -109,7 +92,6 @@ class Viewer {
         state: "rendered",
         meshes: stats.meshes,
         triangles: stats.triangles,
-        engine: engineKind,
         elapsedMs,
       });
     } catch (error) {
@@ -118,33 +100,28 @@ class Viewer {
       }
       const text = error instanceof Error ? error.message : String(error);
       this.setOverlay(`Render failed: ${text}`, false);
-      post({ type: "status", token: message.token, state: "error", message: text, engine: engineKind });
+      post({ type: "status", token: message.token, state: "error", message: text });
       post({ type: "log", level: "error", message: text });
     }
   }
 
-  private getEngine(kind: EngineKind): RenderEngine {
-    if (this.engine && this.engine.kind === kind) {
+  private getEngine(): RenderEngine {
+    if (this.engine) {
       return this.engine;
     }
-    // Switching engines: fully unmount the previous one (dispose its canvas and
-    // GPU context) so only one renderer is ever mounted. A reload is ~100ms, so
-    // recreating from scratch is cheaper than juggling two live canvases.
-    this.engine?.dispose();
-    const engine = createRenderEngine(kind, this.canvasHost, {
-      log: (message) => this.logEngine(kind, message),
+    const engine = new ThatOpenEngine(this.canvasHost, {
+      log: (message) => this.logEngine(message),
     });
     this.engine = engine;
     this.resizeEngine(engine);
     return engine;
   }
 
-  private logEngine(kind: EngineKind, message: string): void {
-    const text = `${kind}: ${message}`;
-    post({ type: "log", level: "info", message: text });
+  private logEngine(message: string): void {
+    post({ type: "log", level: "info", message });
     if (message.startsWith("load:")) {
       this.activeLoadStage = message.slice("load:".length).trim();
-      this.setOverlay(`Loading with ${kind}… ${this.activeLoadStage}`, true);
+      this.setOverlay(`Loading… ${this.activeLoadStage}`, true);
     }
   }
 
@@ -240,7 +217,6 @@ class Viewer {
         onPointerUp: this.onPointerUp,
         onFit: this.fit,
         onReset: this.reset,
-        onToggleEngine: this.toggleEngine,
       }),
       this.root,
     );
@@ -254,8 +230,6 @@ class Viewer {
       hudWarn: this.hudWarn,
       overlayText: this.overlayText,
       overlayBusy: this.overlayBusy,
-      activeEngine: this.activeEngine,
-      hasMessage: this.lastMessage !== undefined,
     };
   }
 }

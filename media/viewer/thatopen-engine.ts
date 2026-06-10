@@ -2,7 +2,6 @@ import * as OBC from "@thatopen/components";
 import * as WebIFC from "web-ifc";
 import * as THREE from "three";
 import type { EngineOptions, RenderEngine, RenderLoad, RenderStats } from "./engine";
-import type { EngineKind } from "../../src/viewer/protocol";
 
 function wasmBase(): string {
   return (globalThis as unknown as { __IFC_WASM_BASE__?: string }).__IFC_WASM_BASE__ ?? "";
@@ -35,6 +34,8 @@ async function withTimeout<T>(label: string, promise: Promise<T>, timeoutMs = 20
 }
 
 const SELECTION_COLOR = 0x4ea1ff;
+const DEFAULT_VIEW_DIRECTION = new THREE.Vector3(1.45, 1.8, 0.9).normalize();
+const DEFAULT_VIEW_PADDING = 1.35;
 
 /**
  * web-ifc geometry, rendered directly through ThatOpen's world/renderer stack.
@@ -45,8 +46,6 @@ const SELECTION_COLOR = 0x4ea1ff;
  * objects to the ThatOpen scene — the classic web-ifc-three approach.
  */
 export class ThatOpenEngine implements RenderEngine {
-  readonly kind: EngineKind = "web-ifc";
-
   private readonly components = new OBC.Components();
   private readonly world: OBC.SimpleWorld<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>;
   private readonly raycaster = new THREE.Raycaster();
@@ -248,8 +247,48 @@ export class ThatOpenEngine implements RenderEngine {
     if (!this.modelGroup) {
       return;
     }
-    await withTimeout("ThatOpen camera fit", this.world.camera.controls.fitToBox(this.modelGroup, false), 5_000);
+    await withTimeout("camera fit", this.fitDefaultView(), 5_000);
     this.renderer.needsUpdate = true;
+  }
+
+  private async fitDefaultView(): Promise<void> {
+    const group = this.modelGroup;
+    if (!group) {
+      return;
+    }
+    const camera = this.world.camera.three;
+    if (!(camera instanceof THREE.PerspectiveCamera)) {
+      await this.world.camera.controls.fitToBox(group, false);
+      return;
+    }
+
+    this.world.scene.three.updateMatrixWorld(true);
+    group.updateMatrixWorld(true);
+
+    const box = new THREE.Box3().setFromObject(group);
+    if (box.isEmpty()) {
+      return;
+    }
+
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    const center = sphere.center;
+    const radius = Math.max(sphere.radius, 1);
+    const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+    const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+    const fitFov = Math.min(verticalFov, horizontalFov);
+    const distance = (radius / Math.sin(fitFov / 2)) * DEFAULT_VIEW_PADDING;
+    const position = center.clone().addScaledVector(DEFAULT_VIEW_DIRECTION, distance);
+
+    await this.world.camera.controls.setLookAt(
+      position.x,
+      position.y,
+      position.z,
+      center.x,
+      center.y,
+      center.z,
+      false,
+    );
+    this.world.camera.controls.normalizeRotations();
   }
 
   async reset(): Promise<void> {

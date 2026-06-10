@@ -1,5 +1,4 @@
 import { html, type TemplateResult } from "lit-html";
-import type { EngineKind } from "../../src/viewer/protocol";
 
 export type ViewerTemplateState = {
   hudTitle: string;
@@ -8,8 +7,6 @@ export type ViewerTemplateState = {
   hudWarn: string;
   overlayText: string;
   overlayBusy: boolean;
-  activeEngine: EngineKind;
-  hasMessage: boolean;
 };
 
 export type ViewerTemplateActions = {
@@ -17,7 +14,6 @@ export type ViewerTemplateActions = {
   onPointerUp(event: PointerEvent): void | Promise<void>;
   onFit(): void;
   onReset(): void;
-  onToggleEngine(): void | Promise<void>;
 };
 
 export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTemplateActions): TemplateResult {
@@ -32,14 +28,6 @@ export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTempla
     <div class="toolbar">
       <button class="tool-button" title="Frame the element" @click=${actions.onFit}>Fit</button>
       <button class="tool-button" title="Reset the camera" @click=${actions.onReset}>Reset</button>
-      <button
-        class="tool-button"
-        title="Switch renderer (ThatOpen/web-ifc ↔ ifc-lite)"
-        ?disabled=${!state.hasMessage}
-        @click=${actions.onToggleEngine}
-      >
-        Engine: ${state.activeEngine}
-      </button>
     </div>
     <div
       class=${state.overlayBusy ? "state-overlay busy" : "state-overlay"}

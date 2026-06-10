@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { resolveExpressIdAtCursor } from "./expressId";
 import { IfcViewerPanel } from "./panel";
-import { EngineKind, LoadMessage } from "./protocol";
+import { LoadMessage } from "./protocol";
 import { StepFileIndex } from "./stepIndex";
 import { extractSubModel } from "./subModel";
 
@@ -25,9 +25,6 @@ const LENS_WHOLE_FILE_MAX_LINES = 6000;
 const LENS_VIEWPORT_MARGIN = 200;
 /** Defensive ceiling on lenses returned from one pass. */
 const LENS_MAX = 2000;
-
-/** Engine the preview opens with; switchable live from the viewer's toolbar. */
-const DEFAULT_ENGINE: EngineKind = "web-ifc";
 
 interface ViewerConfig {
   includeChildren: boolean;
@@ -145,7 +142,6 @@ class ViewerController implements vscode.CodeLensProvider {
           rootType: sub.rootType,
           rootName: index.nameOf(id),
           schema: sub.schema,
-          engine: DEFAULT_ENGINE,
           fileName: path.basename(uri.fsPath),
           includedCount: sub.includedIds.length,
           childCount: sub.childCount,

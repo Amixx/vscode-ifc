@@ -1,7 +1,3 @@
-import { IfcLiteRenderEngine } from "./ifc-lite-engine";
-import { ThatOpenEngine } from "./thatopen-engine";
-import type { EngineKind } from "../../src/viewer/protocol";
-
 export type EngineLog = (message: string) => void;
 
 export interface EngineOptions {
@@ -20,7 +16,6 @@ export interface RenderLoad {
 }
 
 export interface RenderEngine {
-  readonly kind: EngineKind;
   readonly canvas: HTMLCanvasElement;
   load(load: RenderLoad): Promise<RenderStats>;
   fit(): Promise<void> | void;
@@ -29,8 +24,4 @@ export interface RenderEngine {
   resize(width: number, height: number): void;
   update(deltaMs: number): void;
   dispose(): void;
-}
-
-export function createRenderEngine(kind: EngineKind, container: HTMLElement, options: EngineOptions = {}): RenderEngine {
-  return kind === "ifc-lite" ? new IfcLiteRenderEngine(container, options) : new ThatOpenEngine(container, options);
 }

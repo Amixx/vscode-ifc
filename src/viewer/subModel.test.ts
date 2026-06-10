@@ -23,7 +23,7 @@ test("extractSubModel: ordinary product has no pick remap and renders its own id
   assert.match(text(sub.ifcBytes), /#100=\s*IFCWALL/);
 });
 
-test("extractSubModel: bare brep is wrapped in a synthetic product for both engines", () => {
+test("extractSubModel: bare brep is wrapped in a synthetic product for web-ifc", () => {
   const sub = extractSubModel(gate, 504); // #504 IfcFacetedBrep
   const out = text(sub.ifcBytes);
 
@@ -79,7 +79,7 @@ test("extractSubModel: a storey renders contained elements via spatial containme
   // The wall (#100), contained via IfcRelContainedInSpatialStructure, is rendered.
   assert.ok(sub.renderIds.includes(100));
   // The aggregated space (#930) is recursed through but never drawn — and its
-  // volume must not leak into the file (ifc-lite would otherwise render it).
+  // volume must not leak into the file.
   assert.ok(!sub.renderIds.includes(930));
   assert.ok(!text(sub.ifcBytes).includes("#934="));
   assert.equal(sub.childCount, 1);

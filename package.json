@@ -230,8 +230,6 @@
     "web-ifc": "^0.0.77"
   },
   "dependencies": {
-    "@ifc-lite/geometry": "^2.0.0",
-    "@ifc-lite/renderer": "^1.23.1",
     "@thatopen/components": "^3.4.6",
     "lit-html": "^3.3.3"
   }

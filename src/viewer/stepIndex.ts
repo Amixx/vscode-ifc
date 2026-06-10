@@ -45,8 +45,7 @@ const REPRESENTATION_HOLDERS = new Set(["IFCPRODUCTDEFINITIONSHAPE", "IFCPRODUCT
  * Spatial structure containers. They carry no geometry of their own (a storey,
  * building or site is an organizational grouping; a space is a void volume), so
  * we never render them *as elements* inside an assembly/floor walk — they'd just
- * obscure the real building elements, and because ifc-lite renders everything in
- * the sub-model file we keep their volumes out of it entirely for engine parity.
+ * obscure the real building elements.
  * They are still recursed *through* to reach the physical elements they contain
  * (`extractSubModel` follows `IfcRelContainedInSpatialStructure`), which is how a
  * "preview the whole floor" works. A spatial element with its *own* geometry (an
@@ -91,11 +90,11 @@ const NON_RENDERABLE_REPRESENTATION_TYPES = new Set([
 ]);
 
 /**
- * Bare `IfcRepresentationItem` entity types that both geometry engines (web-ifc
- * and ifc-lite) tessellate into a surface/solid mesh, mapped to the
- * `IfcShapeRepresentation.RepresentationType` we stamp on the synthetic product
- * wrapper used to preview them (see `subModel.ts`). Engines key meshing off the
- * item entity itself, so the string is mostly metadata — but our own renderable
+ * Bare `IfcRepresentationItem` entity types that web-ifc tessellates into a
+ * surface/solid mesh, mapped to the `IfcShapeRepresentation.RepresentationType`
+ * we stamp on the synthetic product wrapper used to preview them (see
+ * `subModel.ts`). web-ifc keys meshing off the item entity itself, so the string
+ * is mostly metadata — but our own renderable
  * gate inspects it, so it must be a non-excluded type.
  *
  * Scope is Tier A: solids and bounded surfaces. Curves (Polyline/CompositeCurve/

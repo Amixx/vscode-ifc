@@ -55,8 +55,8 @@ const PREVIEW_GUID = "0previewprimitive00000";
 /**
  * Non-physical products that web-ifc's `StreamAllMeshes` skips even though they
  * carry real `Body` geometry — openings are subtractions, spaces are void volumes.
- * ifc-lite meshes them as ordinary solids; we bring web-ifc to parity by
- * re-presenting their shape under a synthetic proxy (see the wrapper below).
+ * Re-present their shape under a synthetic proxy so direct previews still render
+ * their volume.
  */
 const WEB_IFC_SKIPPED_PRODUCT_TYPES = new Set([
   "IFCOPENINGELEMENT",
@@ -122,9 +122,8 @@ export function extractSubModel(
   // 3. Descendants. BFS the combined decomposition + spatial-containment graph:
   //    assembly parts (IfcStair -> flights) and, for a spatial container, every
   //    physical element on it (IfcRelContainedInSpatialStructure). Spatial
-  //    containers/spaces are recursed *through* but never rendered — they carry no
-  //    geometry of their own and (since ifc-lite draws everything in the file) we
-  //    keep their volumes out of the sub-model for parity with web-ifc.
+  //    containers/spaces are recursed *through* but never rendered — they are
+  //    organizational/void volumes that would obscure the physical elements.
   let childCount = 0;
   if (includeChildren && !truncated) {
     const visited = new Set<number>([rootId]);
@@ -178,8 +177,8 @@ export function extractSubModel(
     }
   }
 
-  // 6. Bare geometry item (a brep/solid/tessellation, not a product). Both engines
-  //    only mesh products, so wrap the item in a synthetic IfcBuildingElementProxy
+  // 6. Bare geometry item (a brep/solid/tessellation, not a product). web-ifc
+  //    streams product meshes, so wrap the item in a synthetic IfcBuildingElementProxy
   //    + shape representation. The item keeps its real id (so its closure renders
   //    unchanged); pick-to-reveal maps the wrapper back to it via `pickRemap`.
   const pickRemap = new Map<number, number>();
@@ -217,10 +216,10 @@ export function extractSubModel(
     pickRemap.set(productId, rootId);
   }
 
-  // 7. Openings/spaces: products with real geometry that web-ifc won't stream (but
-  //    ifc-lite does). Re-present their existing shape + placement under a synthetic
-  //    proxy so web-ifc meshes the volume too — engine parity. Renders the opening
-  //    as its solid "plug"; pick-to-reveal maps the proxy back to the source.
+  // 7. Openings/spaces: products with real geometry that web-ifc won't stream.
+  //    Re-present their existing shape + placement under a synthetic proxy so the
+  //    direct preview renders the opening as its solid "plug"; pick-to-reveal maps
+  //    the proxy back to the source.
   const rootType = index.getType(rootId);
   if (itemRepType === undefined && !truncated && rootType && WEB_IFC_SKIPPED_PRODUCT_TYPES.has(rootType)) {
     const args = index.argsOf(rootId);
@@ -231,8 +230,7 @@ export function extractSubModel(
       extraLines.push(
         `#${productId}=IFCBUILDINGELEMENTPROXY('${PREVIEW_GUID}',$,'Geometry Preview',$,$,${placement},#${shapeRef},$,$);`,
       );
-      // Drop the original space/opening instance so ifc-lite (which renders every
-      // product in the file) doesn't draw the volume twice; the proxy reuses its
+      // Drop the original space/opening instance; the proxy reuses its
       // still-present shape + placement. Any contained elements stay in renderIds.
       included.delete(rootId);
       renderIds.delete(rootId);

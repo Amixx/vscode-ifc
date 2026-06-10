@@ -82,7 +82,7 @@ Clean syntax highlighting for IFC STEP files.
 
 Render any IFC element in 3D without leaving the editor. Place the cursor on an element (or use the `Preview in 3D` CodeLens above any element with geometry) and run **IFC: Preview Element in 3D**. A side panel renders that element and its assembly children; orbit, zoom, and click geometry to jump back to its source line.
 
-Rather than loading the whole model, the extension extracts just the selected element's reference closure into a tiny sub-model, so a single element renders quickly even from very large federated files. Geometry is produced by [web-ifc](https://github.com/ThatOpen/engine_web-ifc) (default) and drawn with [three.js](https://threejs.org/); an experimental [ifc-lite](https://github.com/louistrue/ifc-lite) backend can be switched in live from the preview's toolbar.
+Rather than loading the whole model, the extension extracts just the selected element's reference closure into a tiny sub-model, so a single element renders quickly even from very large federated files. Geometry is produced by [web-ifc](https://github.com/ThatOpen/engine_web-ifc) and drawn with [three.js](https://threejs.org/).
 
 After installation, open an IFC file and the extension will automatically download the required IFC language server.
 

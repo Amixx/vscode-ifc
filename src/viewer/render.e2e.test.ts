@@ -8,7 +8,7 @@ import { extractSubModel } from "./subModel";
 
 /**
  * End-to-end contract test: every element the extension advertises a "Preview in
- * 3D" lens for MUST actually produce geometry in the default (web-ifc) engine.
+ * 3D" lens for MUST actually produce geometry in web-ifc.
  *
  * It walks a real model the way the extension does — the same lens gate, the same
  * `extractSubModel` closure — then renders each sub-model through web-ifc in Node
@@ -17,8 +17,6 @@ import { extractSubModel } from "./subModel";
  * container / assembly mismatches), so the test fails and names the offenders.
  *
  * The model is large and gitignored (local-only); the test skips when it is absent.
- * web-ifc is the oracle because it is `DEFAULT_ENGINE`; the ifc-lite engine runs
- * only in the browser/worker and is out of scope for this Node-side check.
  */
 const MODEL = path.resolve(process.cwd(), "fixtures", "models", "advanced-project.ifc");
 const WASM_PATH = path.resolve(process.cwd(), "node_modules", "web-ifc") + path.sep;

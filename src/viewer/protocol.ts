@@ -3,7 +3,6 @@
  * Pure types (no imports) so both the Node host build and the DOM webview build
  * can share it.
  */
-export type EngineKind = "web-ifc" | "ifc-lite";
 
 /** Host -> webview: render this self-contained sub-model. */
 export interface LoadMessage {
@@ -20,7 +19,6 @@ export interface LoadMessage {
   rootType?: string;
   rootName?: string;
   schema?: string;
-  engine: EngineKind;
   fileName: string;
   includedCount: number;
   childCount: number;
@@ -48,7 +46,6 @@ export interface StatusMessage {
   message?: string;
   meshes?: number;
   triangles?: number;
-  engine?: EngineKind;
   elapsedMs?: number;
 }
 

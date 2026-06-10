@@ -19,7 +19,7 @@ const extensionBuild = {
   logLevel: "info",
 };
 
-/** The webview bundle (browser/ESM): three.js + geometry engines. */
+/** The webview bundle (browser/ESM): three.js + web-ifc geometry. */
 const webviewBuild = {
   entryPoints: ["media/viewer/main.ts"],
   bundle: true,
@@ -28,7 +28,7 @@ const webviewBuild = {
   target: "es2022",
   outfile: "out/webview/viewer.js",
   sourcemap: true,
-  // Minified for packaging (the bundle includes three + two geometry engines);
+  // Minified for packaging (the bundle includes three + web-ifc);
   // the sourcemap stays for dev and is excluded from the VSIX via .vscodeignore.
   minify: true,
   sourcesContent: true,
@@ -38,7 +38,6 @@ const webviewBuild = {
 /** WASM assets that must sit beside the webview bundle so it can fetch them. */
 const wasmCopies = [
   [require.resolve("web-ifc/web-ifc.wasm"), "out/webview/web-ifc.wasm"],
-  [require.resolve("@ifc-lite/wasm/ifc-lite_bg.wasm"), "out/webview/ifc-lite_bg.wasm"],
 ];
 
 async function copyWasm() {

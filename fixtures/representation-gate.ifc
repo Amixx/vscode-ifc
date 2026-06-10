@@ -85,7 +85,7 @@ DATA;
 #1210=IFCRELAGGREGATES('agg5',$,$,$,#1200,(#1000));
 
 /* #1100: IfcOpeningElement — real Body geometry that web-ifc won't stream; must be
-   re-presented under a proxy so it renders (parity with ifc-lite) */
+   re-presented under a proxy so it renders */
 #1100=IFCOPENINGELEMENT('opening',$,'Opening',$,$,#1101,#1102,$);
 #1101=IFCLOCALPLACEMENT($,$);
 #1102=IFCPRODUCTDEFINITIONSHAPE($,$,(#1103));
