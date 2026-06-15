@@ -158,6 +158,16 @@ export class IfcModelTreeProvider implements vscode.TreeDataProvider<IfcTreeNode
       .map((id) => this.getOrCreateNode(id, index));
   }
 
+  getParent(element: IfcTreeNode): IfcTreeNode | undefined {
+    if (!this.currentUri) return undefined;
+    const index = this.indexCache.getCached(this.currentUri.fsPath);
+    if (!index) return undefined;
+    const parentMap = this.ensureParentMap(index);
+    const parentId = parentMap.get(element.expressId);
+    if (parentId === undefined) return undefined;
+    return this.getOrCreateNode(parentId, index);
+  }
+
   private getOrCreateNode(id: number, index: StepFileIndex): IfcTreeNode {
     let node = this.nodeCache.get(id);
     if (!node) {
@@ -242,6 +252,10 @@ export function registerModelTree(
   indexCache: StepIndexCache,
   output: vscode.LogOutputChannel,
 ): void {
+  if (!vscode.workspace.getConfiguration("ifc").get<boolean>("modelTree.enabled", false)) {
+    return;
+  }
+
   const maxFileSizeMb = vscode.workspace
     .getConfiguration("ifc")
     .get<number>("viewer.maxFileSizeMb", 400);

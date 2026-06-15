@@ -38,8 +38,7 @@
     "onCommand:ifc.downloadLanguageServer",
     "onCommand:ifc.restartLanguageServer",
     "onCommand:ifc.showResolvedServer",
-    "onCommand:ifc.viewElement",
-    "onView:ifcModelTree"
+    "onCommand:ifc.viewElement"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -118,7 +117,7 @@
           "id": "ifcModelTree",
           "name": "Model Tree",
           "icon": "$(list-tree)",
-          "when": "resourceLangId == ifc"
+          "when": "config.ifc.modelTree.enabled"
         }
       ]
     },
@@ -267,6 +266,11 @@
           "default": 400,
           "minimum": 1,
           "markdownDescription": "Maximum IFC file size (MiB) the 3D preview will index. Only the selected element is rendered, but the file is scanned once to extract it."
+        },
+        "ifc.modelTree.enabled": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Enable the IFC Model Tree sidebar, which shows the spatial hierarchy (IfcProject → Site → Building → Storey → elements). Requires reloading the window after changing."
         }
       }
     },
@@ -296,7 +300,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "watch": "node esbuild.js --watch",
-    "build:test": "esbuild src/viewer/*.test.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --outdir=out/test",
+    "build:test": "esbuild 'src/viewer/*.test.ts' --bundle --platform=node --format=cjs --target=node20 --external:vscode --outdir=out/test",
     "test": "npm run build:test && node --test out/test/*.test.js",
     "vscode:prepublish": "npm run compile",
     "package": "vsce package"
