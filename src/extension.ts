@@ -2,7 +2,9 @@ import * as vscode from "vscode";
 import { IfcLanguageClientManager } from "./client";
 import { registerVisibleIdHighlight } from "./idHighlight";
 import { createOutputChannel } from "./logging";
+import { registerModelTree } from "./modelTree";
 import { resolveServer } from "./serverPath";
+import { StepIndexCache } from "./viewer/indexCache";
 import { registerViewer } from "./viewer";
 
 /** Configuration sections that require a language-server restart when changed. */
@@ -24,7 +26,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(output);
   registerVisibleIdHighlight(context);
 
-  registerViewer(context, output);
+  const indexCache = new StepIndexCache();
+  context.subscriptions.push(indexCache);
+
+  registerViewer(context, output, indexCache);
+  registerModelTree(context, indexCache, output);
 
   context.subscriptions.push(
     vscode.commands.registerCommand("ifc.downloadLanguageServer", async () => {

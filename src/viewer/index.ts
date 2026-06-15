@@ -1,13 +1,11 @@
-import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { resolveExpressIdAtCursor } from "./expressId";
+import { StepIndexCache } from "./indexCache";
 import { IfcViewerPanel } from "./panel";
 import { LoadMessage } from "./protocol";
 import { StepFileIndex } from "./stepIndex";
 import { extractSubModel } from "./subModel";
-
-const MB = 1024 * 1024;
 
 /**
  * Cheap per-line pre-filter for the "Preview in 3D" CodeLens: any `#id = IFC…`
@@ -41,22 +39,14 @@ function readConfig(): ViewerConfig {
   };
 }
 
-interface CacheEntry {
-  mtimeMs: number;
-  size: number;
-  index: StepFileIndex;
-}
-
 /**
  * Coordinates the 3D preview: resolves the element under the cursor, builds (and
  * caches) a STEP index, extracts a tiny self-contained sub-model, and hands it to
  * the webview. Also serves CodeLenses and pick-to-reveal.
  */
 class ViewerController implements vscode.CodeLensProvider {
-  private readonly indexCache = new Map<string, CacheEntry>();
   private panel: IfcViewerPanel | undefined;
   private lastSourceUri: vscode.Uri | undefined;
-  /** Rendered-id -> source-id for the current preview (see SubModelResult.pickRemap). */
   private lastPickRemap: Map<number, number> = new Map();
   private token = 0;
   private lensRefreshTimer: ReturnType<typeof setTimeout> | undefined;
@@ -67,6 +57,7 @@ class ViewerController implements vscode.CodeLensProvider {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly output: vscode.LogOutputChannel,
+    private readonly indexCache: StepIndexCache,
   ) {}
 
   configChanged(): void {
@@ -166,26 +157,7 @@ class ViewerController implements vscode.CodeLensProvider {
   }
 
   private async getIndex(uri: vscode.Uri, maxFileSizeMb: number): Promise<StepFileIndex> {
-    if (uri.scheme !== "file") {
-      const doc = await vscode.workspace.openTextDocument(uri);
-      return StepFileIndex.build(Buffer.from(doc.getText(), "utf8"));
-    }
-
-    const stat = await fs.stat(uri.fsPath);
-    const cached = this.indexCache.get(uri.fsPath);
-    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
-      return cached.index;
-    }
-    if (stat.size > maxFileSizeMb * MB) {
-      throw new Error(
-        `File is ${(stat.size / MB).toFixed(0)} MB, above the ${maxFileSizeMb} MB preview limit ` +
-          `(raise \`ifc.viewer.maxFileSizeMb\` to override).`,
-      );
-    }
-    const buffer = await fs.readFile(uri.fsPath);
-    const index = StepFileIndex.build(buffer);
-    this.indexCache.set(uri.fsPath, { mtimeMs: stat.mtimeMs, size: stat.size, index });
-    return index;
+    return this.indexCache.get(uri, maxFileSizeMb);
   }
 
   private async reveal(expressId: number): Promise<void> {
@@ -193,10 +165,9 @@ class ViewerController implements vscode.CodeLensProvider {
     if (!uri) {
       return;
     }
-    // A picked synthetic wrapper resolves back to the real geometry item it previews.
     const sourceId = this.lastPickRemap.get(expressId) ?? expressId;
-    const cached = uri.scheme === "file" ? this.indexCache.get(uri.fsPath) : undefined;
-    const pos = cached?.index.positionOf(sourceId);
+    const cached = uri.scheme === "file" ? this.indexCache.getCached(uri.fsPath) : undefined;
+    const pos = cached?.positionOf(sourceId);
     const editor = await vscode.window.showTextDocument(uri, {
       viewColumn: vscode.ViewColumn.One,
       preserveFocus: false,
@@ -296,15 +267,15 @@ class ViewerController implements vscode.CodeLensProvider {
       clearTimeout(this.lensRefreshTimer);
     }
     this.lensChanged.dispose();
-    this.indexCache.clear();
   }
 }
 
 export function registerViewer(
   context: vscode.ExtensionContext,
   output: vscode.LogOutputChannel,
+  indexCache: StepIndexCache,
 ): void {
-  const controller = new ViewerController(context, output);
+  const controller = new ViewerController(context, output, indexCache);
 
   context.subscriptions.push(
     vscode.commands.registerCommand("ifc.viewElement", (arg) => controller.viewElement(arg)),

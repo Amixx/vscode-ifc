@@ -38,7 +38,8 @@
     "onCommand:ifc.downloadLanguageServer",
     "onCommand:ifc.restartLanguageServer",
     "onCommand:ifc.showResolvedServer",
-    "onCommand:ifc.viewElement"
+    "onCommand:ifc.viewElement",
+    "onView:ifcModelTree"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -82,6 +83,50 @@
         "title": "Preview Element in 3D",
         "category": "IFC",
         "icon": "$(eye)"
+      },
+      {
+        "command": "ifc.revealInEditor",
+        "title": "Reveal in Editor",
+        "category": "IFC",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "ifc.modelTreePreviewElement",
+        "title": "Preview in 3D",
+        "category": "IFC",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "ifc.refreshModelTree",
+        "title": "Refresh Model Tree",
+        "category": "IFC",
+        "icon": "$(refresh)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ifc-explorer",
+          "title": "IFC",
+          "icon": "resources/ifc-sidebar.svg"
+        }
+      ]
+    },
+    "views": {
+      "ifc-explorer": [
+        {
+          "id": "ifcModelTree",
+          "name": "Model Tree",
+          "icon": "$(list-tree)",
+          "when": "resourceLangId == ifc"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "ifcModelTree",
+        "contents": "Open an IFC file to see the spatial hierarchy.\n[Open IFC File](command:workbench.action.files.openFile)",
+        "when": "!resourceLangId"
       }
     ],
     "menus": {
@@ -103,6 +148,42 @@
         {
           "command": "ifc.viewElement",
           "when": "resourceLangId == ifc"
+        },
+        {
+          "command": "ifc.revealInEditor",
+          "when": "false"
+        },
+        {
+          "command": "ifc.modelTreePreviewElement",
+          "when": "false"
+        },
+        {
+          "command": "ifc.refreshModelTree",
+          "when": "resourceLangId == ifc"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "ifc.refreshModelTree",
+          "when": "view == ifcModelTree",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "ifc.modelTreePreviewElement",
+          "when": "view == ifcModelTree && viewItem == ifcNode",
+          "group": "inline@1"
+        },
+        {
+          "command": "ifc.revealInEditor",
+          "when": "view == ifcModelTree && viewItem == ifcNode",
+          "group": "navigation@1"
+        },
+        {
+          "command": "ifc.modelTreePreviewElement",
+          "when": "view == ifcModelTree && viewItem == ifcNode",
+          "group": "navigation@2"
         }
       ]
     },
