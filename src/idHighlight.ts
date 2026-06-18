@@ -129,14 +129,7 @@ function visibleIdRanges(
         }
 
         seen.add(key);
-        ranges.push(
-          new vscode.Range(
-            lineNumber,
-            startCharacter,
-            lineNumber,
-            endCharacter,
-          ),
-        );
+        ranges.push(new vscode.Range(lineNumber, startCharacter, lineNumber, endCharacter));
       }
     }
   }

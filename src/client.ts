@@ -1,9 +1,5 @@
 import * as vscode from "vscode";
-import {
-  LanguageClient,
-  LanguageClientOptions,
-  ServerOptions,
-} from "vscode-languageclient/node";
+import { LanguageClient, LanguageClientOptions, ServerOptions } from "vscode-languageclient/node";
 import { IfcExtensionConfig, getIfcConfig } from "./config";
 import { resolveServer } from "./serverPath";
 
@@ -95,9 +91,7 @@ export class IfcLanguageClientManager {
 // "[Level  - HH:MM:SS] body". We strip that prefix and route to the matching
 // LogOutputChannel level so VS Code's log UI (icons, level filter, dimmed
 // timestamps) lights up instead of showing flat lines with a redundant prefix.
-function createServerChannelProxy(
-  log: vscode.LogOutputChannel,
-): vscode.OutputChannel {
+function createServerChannelProxy(log: vscode.LogOutputChannel): vscode.OutputChannel {
   // Names match vscode-languageclient's emitted prefixes.
   const PREFIX = /^\[(Info|Warn|Error|Trace|Debug|Log)\s*-\s*[^\]]+\]\s?/;
   const LEVEL_METHOD: Record<string, "error" | "warn" | "debug" | "info"> = {
@@ -109,7 +103,9 @@ function createServerChannelProxy(
 
   const writeLine = (raw: string): void => {
     const line = raw.replace(/\r$/, "");
-    if (!line) return;
+    if (!line) {
+      return;
+    }
     const match = line.match(PREFIX);
     const body = match ? line.slice(match[0].length) : line;
     const method = LEVEL_METHOD[match?.[1] ?? ""] ?? "info";
@@ -128,11 +124,7 @@ function createServerChannelProxy(
     },
     clear: () => log.clear(),
     show: ((columnOrPreserve?: unknown, preserveFocus?: boolean) => {
-      log.show(
-        typeof columnOrPreserve === "boolean" 
-          ? columnOrPreserve 
-          : preserveFocus
-      );
+      log.show(typeof columnOrPreserve === "boolean" ? columnOrPreserve : preserveFocus);
     }) as vscode.OutputChannel["show"],
     hide: () => log.hide(),
     dispose: () => {
@@ -141,9 +133,7 @@ function createServerChannelProxy(
   };
 }
 
-function getInitializationOptions(
-  config: IfcExtensionConfig,
-): IfcInitializationOptions {
+function getInitializationOptions(config: IfcExtensionConfig): IfcInitializationOptions {
   const initializationOptions: IfcInitializationOptions = {};
 
   if (config.overwriteExpSchemaWithLocal) {
