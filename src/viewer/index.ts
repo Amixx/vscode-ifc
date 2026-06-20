@@ -76,7 +76,10 @@ class ViewerController implements vscode.CodeLensProvider {
   /** Re-query lenses after the viewport moves (debounced). Only matters for large
    *  files, which are viewport-limited; small files lens whole and don't move. */
   onVisibleRangesChanged(editor: vscode.TextEditor): void {
-    if (editor.document.languageId !== "ifc" || editor.document.lineCount <= LENS_WHOLE_FILE_MAX_LINES) {
+    if (
+      editor.document.languageId !== "ifc" ||
+      editor.document.lineCount <= LENS_WHOLE_FILE_MAX_LINES
+    ) {
       return;
     }
     if (this.lensRefreshTimer) {
@@ -103,12 +106,15 @@ class ViewerController implements vscode.CodeLensProvider {
     }
   }
 
-  private resolveTarget(arg?: { uri?: vscode.Uri; id?: number }): { uri: vscode.Uri; id: number } | undefined {
+  private resolveTarget(arg?: {
+    uri?: vscode.Uri;
+    id?: number;
+  }): { uri: vscode.Uri; id: number } | undefined {
     if (arg?.uri && typeof arg.id === "number") {
       return { uri: arg.uri, id: arg.id };
     }
     const editor = vscode.window.activeTextEditor;
-    if (!editor || editor.document.languageId !== "ifc") {
+    if (editor?.document.languageId !== "ifc") {
       return undefined;
     }
     const id = resolveExpressIdAtCursor(editor);

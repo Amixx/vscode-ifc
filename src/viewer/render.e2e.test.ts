@@ -48,7 +48,9 @@ function renderTriangles(api: IfcAPI, sub: ReturnType<typeof extractSubModel>): 
   return triangles;
 }
 
-test("every previewable element renders geometry in web-ifc", { timeout: 600_000 }, async (t: TestContext) => {
+test("every previewable element renders geometry in web-ifc", {
+  timeout: 600_000,
+}, async (t: TestContext) => {
   const buffer = readFileSync(MODEL);
   const index = StepFileIndex.build(buffer);
 

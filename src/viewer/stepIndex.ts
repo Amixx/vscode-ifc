@@ -446,7 +446,7 @@ export class StepFileIndex {
   private isRenderableRepresentation(repId: number): boolean {
     // IfcRepresentation(ContextOfItems, RepresentationIdentifier, RepresentationType, Items).
     const repType = this.argsOf(repId)[2];
-    if (!repType || repType[0] !== "'") {
+    if (repType?.[0] !== "'") {
       // Missing/unspecified type: stay permissive rather than hide real geometry.
       return true;
     }

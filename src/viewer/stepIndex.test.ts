@@ -69,7 +69,11 @@ test("isPreviewable: spaces (own volume) and containers (contents) are previewab
 });
 
 test("hasRenderableRepresentation: real sample file — products yes, sub-contexts no", (t: TestContext) => {
-  const file = path.resolve(process.cwd(), "test-files", "000.063019MB__Ifc4_SampleHouse_1_Roof.ifc");
+  const file = path.resolve(
+    process.cwd(),
+    "test-files",
+    "000.063019MB__Ifc4_SampleHouse_1_Roof.ifc",
+  );
   if (!existsSync(file)) {
     t.skip("sample model not present (gitignored; local-only)");
     return;
@@ -80,7 +84,7 @@ test("hasRenderableRepresentation: real sample file — products yes, sub-contex
   const firstIdOfType = (type: string): number => {
     const m = new RegExp(`#(\\d+)=\\s*${type}\\(`, "i").exec(text);
     assert.ok(m, `expected a ${type} in the sample file`);
-    return Number.parseInt(m![1], 10);
+    return Number.parseInt(m[1], 10);
   };
 
   assert.equal(index.hasRenderableRepresentation(firstIdOfType("IFCROOF")), true);

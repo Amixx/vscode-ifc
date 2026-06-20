@@ -2,7 +2,7 @@
   "name": "vscode-ifc",
   "displayName": "IFC Language Tools",
   "description": "Professional VS Code support for IFC STEP files powered by the IFC Language Server.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "publisher": "wolfnepomuk",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -210,6 +210,10 @@
   ],
   "scripts": {
     "compile": "tsc -p ./ --noEmit && tsc -p media/viewer/tsconfig.json --noEmit && node esbuild.js",
+    "check": "biome check .",
+    "check:write": "biome check --write .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "watch": "node esbuild.js --watch",
     "build:test": "esbuild src/viewer/*.test.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --outdir=out/test",
     "test": "npm run build:test && node --test out/test/*.test.js",
@@ -217,6 +221,7 @@
     "package": "vsce package"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.16",
     "@types/node": "^20.17.50",
     "@types/three": "^0.184.0",
     "@types/vscode": "^1.93.0",

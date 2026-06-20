@@ -91,9 +91,9 @@ export class IfcViewerPanel {
         this.statusEmitter.fire(message);
         break;
       case "log":
-        this.output[message.level === "error" ? "error" : message.level === "warn" ? "warn" : "info"](
-          `[viewer] ${message.message}`,
-        );
+        this.output[
+          message.level === "error" ? "error" : message.level === "warn" ? "warn" : "info"
+        ](`[viewer] ${message.message}`);
         break;
     }
   }

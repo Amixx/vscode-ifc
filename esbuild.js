@@ -1,6 +1,5 @@
 const esbuild = require("esbuild");
 const fs = require("node:fs/promises");
-const path = require("node:path");
 
 const watch = process.argv.includes("--watch");
 
@@ -36,9 +35,7 @@ const webviewBuild = {
 };
 
 /** WASM assets that must sit beside the webview bundle so it can fetch them. */
-const wasmCopies = [
-  [require.resolve("web-ifc/web-ifc.wasm"), "out/webview/web-ifc.wasm"],
-];
+const wasmCopies = [[require.resolve("web-ifc/web-ifc.wasm"), "out/webview/web-ifc.wasm"]];
 
 async function copyWasm() {
   await fs.mkdir("out/webview", { recursive: true });

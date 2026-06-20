@@ -199,13 +199,17 @@ export function extractSubModel(
       contextId = alloc();
       extraLines.push(`#${originId}=IFCCARTESIANPOINT((0.,0.,0.));`);
       extraLines.push(`#${wcsId}=IFCAXIS2PLACEMENT3D(#${originId},$,$);`);
-      extraLines.push(`#${contextId}=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-5,#${wcsId},$);`);
+      extraLines.push(
+        `#${contextId}=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-5,#${wcsId},$);`,
+      );
     }
 
     const shapeRepId = alloc();
     const prodDefId = alloc();
     const productId = alloc();
-    extraLines.push(`#${shapeRepId}=IFCSHAPEREPRESENTATION(#${contextId},'Body','${itemRepType}',(#${rootId}));`);
+    extraLines.push(
+      `#${shapeRepId}=IFCSHAPEREPRESENTATION(#${contextId},'Body','${itemRepType}',(#${rootId}));`,
+    );
     extraLines.push(`#${prodDefId}=IFCPRODUCTDEFINITIONSHAPE($,$,(#${shapeRepId}));`);
     extraLines.push(
       `#${productId}=IFCBUILDINGELEMENTPROXY('${PREVIEW_GUID}',$,'Geometry Preview',$,$,$,#${prodDefId},$,$);`,
@@ -221,7 +225,12 @@ export function extractSubModel(
   //    direct preview renders the opening as its solid "plug"; pick-to-reveal maps
   //    the proxy back to the source.
   const rootType = index.getType(rootId);
-  if (itemRepType === undefined && !truncated && rootType && WEB_IFC_SKIPPED_PRODUCT_TYPES.has(rootType)) {
+  if (
+    itemRepType === undefined &&
+    !truncated &&
+    rootType &&
+    WEB_IFC_SKIPPED_PRODUCT_TYPES.has(rootType)
+  ) {
     const args = index.argsOf(rootId);
     const shapeRef = collectRefs(args[6] ?? "")[0]; // Representation -> IfcProductDefinitionShape
     if (shapeRef !== undefined && index.hasId(shapeRef)) {
@@ -259,7 +268,11 @@ export function extractSubModel(
  *  the original bytes verbatim (no latin1/UTF-8 round-trip) so non-ASCII content
  *  survives intact on its way to the geometry engine. Returns an exact-sized
  *  ArrayBuffer (Buffer.concat may sit in a shared pool, so slice to our bytes). */
-function assemble(index: StepFileIndex, ids: number[], extraLines: readonly string[] = []): ArrayBuffer {
+function assemble(
+  index: StepFileIndex,
+  ids: number[],
+  extraLines: readonly string[] = [],
+): ArrayBuffer {
   const NL = Buffer.from("\n");
   const parts: Buffer[] = [index.headerBytes()];
   for (const id of ids) {

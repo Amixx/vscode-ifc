@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { IfcLanguageClientManager } from "./client";
+import { registerVisibleIdHighlight } from "./idHighlight";
 import { createOutputChannel } from "./logging";
 import { resolveServer } from "./serverPath";
 import { registerViewer } from "./viewer";
@@ -21,6 +22,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   manager = nextManager;
 
   context.subscriptions.push(output);
+  registerVisibleIdHighlight(context);
 
   registerViewer(context, output);
 
@@ -77,7 +79,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       try {
         await nextManager.restart();
       } catch (error) {
-        handleError("Failed to restart IFC language server after configuration change.", error, output);
+        handleError(
+          "Failed to restart IFC language server after configuration change.",
+          error,
+          output,
+        );
       }
     }),
   );
@@ -109,11 +115,7 @@ export async function deactivate(): Promise<void> {
   manager = undefined;
 }
 
-function handleError(
-  prefix: string,
-  error: unknown,
-  output: vscode.LogOutputChannel,
-): void {
+function handleError(prefix: string, error: unknown, output: vscode.LogOutputChannel): void {
   const message = `${prefix} ${asMessage(error)}`;
   output.error(message);
   void vscode.window.showErrorMessage(message);
