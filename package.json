@@ -225,7 +225,7 @@
     "@types/node": "^20.17.50",
     "@types/three": "^0.184.0",
     "@types/vscode": "^1.93.0",
-    "@vscode/vsce": "^3.6.2",
+    "@vscode/vsce": "^3.9.2",
     "adm-zip": "^0.5.16",
     "esbuild": "^0.25.0",
     "tar": "^7.4.3",
