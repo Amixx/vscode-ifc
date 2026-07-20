@@ -161,6 +161,12 @@
           "default": true,
           "markdownDescription": "Enable range-based semantic tokens provided by the IFC language server."
         },
+        "ifc.outline.maxSymbols": {
+          "type": "number",
+          "default": 20000,
+          "minimum": 1,
+          "markdownDescription": "Maximum number of IFC entity instances returned to Outline, breadcrumbs, and Go to Symbol. Files above this limit show an explanatory placeholder instead of building an expensive symbol tree."
+        },
         "ifc.trace.server": {
           "type": "string",
           "enum": [

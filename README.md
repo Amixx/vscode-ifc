@@ -15,6 +15,7 @@ It combines local editor support with the IFC Language Server to provide:
 - Hover information
 - Go to definition
 - Find references
+- Outline, breadcrumbs, and go-to-symbol navigation for IFC entity instances
 - Semantic tokens
 - 3D preview of individual elements
 
@@ -72,6 +73,10 @@ Use `Shift + F12` to locate all references to an entity.
 
 ![Find References](resources/go_to_reference.png)
 
+### Outline and Go to Symbol
+
+Use the Outline view, breadcrumbs, or `Ctrl+Shift+O` (`Cmd+Shift+O` on macOS) to navigate IFC entity instances by type, STEP id, and name.
+
 ### Syntax Highlighting
 
 Clean syntax highlighting for IFC STEP files.
@@ -93,6 +98,7 @@ After installation, open an IFC file and the extension will automatically downlo
 3. Hover over STEP IDs such as `#12345` or IFC entity names such as `IFCWALL`.
 4. Use `F12` or Ctrl/Cmd-click for go to definition.
 5. Use `Shift + F12` for find references.
+6. Use the Outline view or `Ctrl+Shift+O` (`Cmd+Shift+O` on macOS) to jump between IFC entity instances.
 
 ## Settings
 
@@ -107,6 +113,7 @@ Most users do not need to change anything. Advanced settings are available for d
 - `ifc.schema.addLocalSchemaToSelection`: List of local `.exp` files or directories containing `.exp` files that the language server may use for schema selection.
 - `ifc.analysis.astFileSizeLimitMb`: Maximum file size in MiB for AST-backed language-server features. Larger files keep basic hover, navigation, and semantic tokens available, but skip schema diagnostics and derived-value hover.
 - `ifc.semanticTokens.enabled`: Enable range-based semantic tokens provided by the language server.
+- `ifc.outline.maxSymbols`: Maximum number of entity instances returned to Outline, breadcrumbs, and Go to Symbol. Larger models show a lightweight explanation instead of constructing the full tree.
 - `ifc.trace.server`: Trace level for the VS Code language client.
 - `ifc.viewer.includeChildren`: Include an element's decomposition/assembly children in the 3D preview.
 - `ifc.viewer.codeLens`: Show the `Preview in 3D` CodeLens above any element that has geometry (follows the viewport on large files).
