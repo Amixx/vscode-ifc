@@ -15,6 +15,7 @@ It combines local editor support with the IFC Language Server to provide:
 - Hover information
 - Go to definition
 - Find references
+- Spatial model tree
 - Semantic tokens
 - 3D preview of individual elements
 
@@ -78,6 +79,10 @@ Clean syntax highlighting for IFC STEP files.
 
 ![Syntax Highlighting](resources/syntax_highlighting.png)
 
+### Spatial Model Tree
+
+Open the IFC activity-bar view to browse the active model as Project → Site → Building → Storey → elements. Selecting a node reveals its STEP definition, and renderable nodes can be previewed directly in 3D. The tree follows the active IFC editor and editor selections.
+
 ### 3D Element Preview
 
 Render any IFC element in 3D without leaving the editor. Place the cursor on an element (or use the `Preview in 3D` CodeLens above any element with geometry) and run **IFC: Preview Element in 3D**. A side panel renders that element and its assembly children; orbit, zoom, and click geometry to jump back to its source line.
@@ -111,6 +116,7 @@ Most users do not need to change anything. Advanced settings are available for d
 - `ifc.viewer.includeChildren`: Include an element's decomposition/assembly children in the 3D preview.
 - `ifc.viewer.codeLens`: Show the `Preview in 3D` CodeLens above any element that has geometry (follows the viewport on large files).
 - `ifc.viewer.maxFileSizeMb`: Maximum IFC file size the 3D preview will index to extract an element.
+- `ifc.modelTree.enabled`: Show the IFC spatial model tree in the activity bar.
 
 Changes to IFC settings restart the language server automatically.
 
@@ -120,6 +126,7 @@ Changes to IFC settings restart the language server automatically.
 - `IFC: Restart Language Server`
 - `IFC: Show Resolved Language Server`
 - `IFC: Preview Element in 3D`
+- `IFC: Refresh Model Tree`
 
 ## Editor Configuration
 

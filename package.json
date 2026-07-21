@@ -171,17 +171,17 @@
       "view/item/context": [
         {
           "command": "ifc.modelTreePreviewElement",
-          "when": "view == ifcModelTree && viewItem == ifcNode",
+          "when": "view == ifcModelTree && viewItem == ifcNodePreviewable",
           "group": "inline@1"
         },
         {
           "command": "ifc.revealInEditor",
-          "when": "view == ifcModelTree && viewItem == ifcNode",
+          "when": "view == ifcModelTree && (viewItem == ifcNode || viewItem == ifcNodePreviewable)",
           "group": "navigation@1"
         },
         {
           "command": "ifc.modelTreePreviewElement",
-          "when": "view == ifcModelTree && viewItem == ifcNode",
+          "when": "view == ifcModelTree && viewItem == ifcNodePreviewable",
           "group": "navigation@2"
         }
       ]
@@ -269,8 +269,8 @@
         },
         "ifc.modelTree.enabled": {
           "type": "boolean",
-          "default": false,
-          "markdownDescription": "Enable the IFC Model Tree sidebar, which shows the spatial hierarchy (IfcProject → Site → Building → Storey → elements). Requires reloading the window after changing."
+          "default": true,
+          "markdownDescription": "Show the IFC Model Tree sidebar with the spatial hierarchy (IfcProject → Site → Building → Storey → elements)."
         }
       }
     },

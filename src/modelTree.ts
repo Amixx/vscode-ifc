@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { resolveExpressIdAtCursor } from "./viewer/expressId";
-import { StepFileIndex } from "./viewer/stepIndex";
 import { StepIndexCache } from "./viewer/indexCache";
+import { StepFileIndex } from "./viewer/stepIndex";
 
 const SPATIAL_TYPE_ICONS: Record<string, string> = {
   IFCPROJECT: "root-folder-opened",
@@ -43,7 +43,9 @@ class IfcTreeNode extends vscode.TreeItem {
     this.id = String(expressId);
     this.description = type ? shortType(type) : undefined;
     this.iconPath = iconForType(type);
-    this.contextValue = "ifcNode";
+    this.contextValue = index.isPreviewable(expressId, includeChildren())
+      ? "ifcNodePreviewable"
+      : "ifcNode";
     this.command = {
       command: "ifc.revealInEditor",
       title: "Reveal in Editor",
@@ -59,9 +61,7 @@ class IfcTreeNode extends vscode.TreeItem {
 }
 
 export class IfcModelTreeProvider implements vscode.TreeDataProvider<IfcTreeNode> {
-  private readonly _onDidChangeTreeData = new vscode.EventEmitter<
-    IfcTreeNode | undefined | null
-  >();
+  private readonly _onDidChangeTreeData = new vscode.EventEmitter<IfcTreeNode | undefined | null>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private currentUri: vscode.Uri | undefined;
@@ -72,7 +72,7 @@ export class IfcModelTreeProvider implements vscode.TreeDataProvider<IfcTreeNode
 
   constructor(
     private readonly indexCache: StepIndexCache,
-    private readonly maxFileSizeMb: number,
+    private readonly output: vscode.LogOutputChannel,
   ) {}
 
   trackEditor(): vscode.Disposable {
@@ -115,6 +115,9 @@ export class IfcModelTreeProvider implements vscode.TreeDataProvider<IfcTreeNode
   setCurrentUri(uri: vscode.Uri): void {
     if (this.currentUri?.fsPath === uri.fsPath) return;
     this.currentUri = uri;
+    if (this.treeView) {
+      this.treeView.description = vscode.workspace.asRelativePath(uri, false);
+    }
     this.invalidate();
   }
 
@@ -125,6 +128,9 @@ export class IfcModelTreeProvider implements vscode.TreeDataProvider<IfcTreeNode
   }
 
   refresh(): void {
+    if (this.currentUri?.scheme === "file") {
+      this.indexCache.invalidate(this.currentUri.fsPath);
+    }
     this.invalidate();
   }
 
@@ -137,17 +143,27 @@ export class IfcModelTreeProvider implements vscode.TreeDataProvider<IfcTreeNode
 
     let index: StepFileIndex;
     try {
-      index = await this.indexCache.get(this.currentUri, this.maxFileSizeMb);
-    } catch {
+      index = await this.indexCache.get(this.currentUri, maxFileSizeMb());
+    } catch (error) {
+      if (!element && this.treeView) {
+        this.treeView.message = error instanceof Error ? error.message : String(error);
+      }
+      this.output.warn(
+        `IFC model tree could not index ${this.currentUri.fsPath}: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return [];
     }
 
     if (!element) {
+      if (this.treeView) {
+        this.treeView.message =
+          index.projectId === undefined ? "This file does not contain an IfcProject." : undefined;
+      }
       if (index.projectId === undefined) return [];
       return [this.getOrCreateNode(index.projectId, index)];
     }
 
-    const childIds = index.decompositionChildrenOf(element.expressId);
+    const childIds = [...new Set(index.decompositionChildrenOf(element.expressId))];
     return childIds
       .sort((a, b) => {
         const aSpatial = index.isSpatialContainer(a) ? 0 : 1;
@@ -171,7 +187,11 @@ export class IfcModelTreeProvider implements vscode.TreeDataProvider<IfcTreeNode
   private getOrCreateNode(id: number, index: StepFileIndex): IfcTreeNode {
     let node = this.nodeCache.get(id);
     if (!node) {
-      node = new IfcTreeNode(id, this.currentUri!, index);
+      const uri = this.currentUri;
+      if (!uri) {
+        throw new Error("Cannot create an IFC model tree node without an active model.");
+      }
+      node = new IfcTreeNode(id, uri, index);
       this.nodeCache.set(id, node);
     }
     return node;
@@ -182,7 +202,7 @@ export class IfcModelTreeProvider implements vscode.TreeDataProvider<IfcTreeNode
 
     let index: StepFileIndex;
     try {
-      index = await this.indexCache.get(this.currentUri, this.maxFileSizeMb);
+      index = await this.indexCache.get(this.currentUri, maxFileSizeMb());
     } catch {
       return;
     }
@@ -214,7 +234,8 @@ export class IfcModelTreeProvider implements vscode.TreeDataProvider<IfcTreeNode
       const stack = [index.projectId];
       const seen = new Set<number>();
       while (stack.length > 0) {
-        const parentId = stack.pop()!;
+        const parentId = stack.pop();
+        if (parentId === undefined) break;
         if (seen.has(parentId)) continue;
         seen.add(parentId);
         for (const childId of index.decompositionChildrenOf(parentId)) {
@@ -232,7 +253,9 @@ export class IfcModelTreeProvider implements vscode.TreeDataProvider<IfcTreeNode
     const path: number[] = [targetId];
     let current = targetId;
     while (parentMap.has(current)) {
-      current = parentMap.get(current)!;
+      const parent = parentMap.get(current);
+      if (parent === undefined) break;
+      current = parent;
       path.unshift(current);
     }
     if (path[0] !== index.projectId) return [];
@@ -252,14 +275,7 @@ export function registerModelTree(
   indexCache: StepIndexCache,
   output: vscode.LogOutputChannel,
 ): void {
-  if (!vscode.workspace.getConfiguration("ifc").get<boolean>("modelTree.enabled", false)) {
-    return;
-  }
-
-  const maxFileSizeMb = vscode.workspace
-    .getConfiguration("ifc")
-    .get<number>("viewer.maxFileSizeMb", 400);
-  const provider = new IfcModelTreeProvider(indexCache, maxFileSizeMb);
+  const provider = new IfcModelTreeProvider(indexCache, output);
 
   const treeView = vscode.window.createTreeView("ifcModelTree", {
     treeDataProvider: provider,
@@ -277,13 +293,13 @@ export function registerModelTree(
       async (arg?: { uri?: vscode.Uri; id?: number }) => {
         if (!arg?.uri || typeof arg.id !== "number") return;
         try {
+          const index = await indexCache.get(arg.uri, maxFileSizeMb());
           const doc = await vscode.workspace.openTextDocument(arg.uri);
           const editor = await vscode.window.showTextDocument(doc, {
             viewColumn: vscode.ViewColumn.One,
             preserveFocus: false,
           });
-          const cached = indexCache.getCached(arg.uri.fsPath);
-          const pos = cached?.positionOf(arg.id);
+          const pos = index.positionOf(arg.id);
           if (pos) {
             const position = new vscode.Position(pos.line, pos.character);
             editor.selection = new vscode.Selection(position, position);
@@ -311,7 +327,10 @@ export function registerModelTree(
     vscode.commands.registerCommand("ifc.refreshModelTree", () => provider.refresh()),
 
     vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration("ifc.viewer.maxFileSizeMb")) {
+      if (
+        event.affectsConfiguration("ifc.viewer.maxFileSizeMb") ||
+        event.affectsConfiguration("ifc.viewer.includeChildren")
+      ) {
         provider.refresh();
       }
     }),
@@ -321,4 +340,12 @@ export function registerModelTree(
   if (activeEditor?.document.languageId === "ifc") {
     provider.setCurrentUri(activeEditor.document.uri);
   }
+}
+
+function maxFileSizeMb(): number {
+  return vscode.workspace.getConfiguration("ifc").get<number>("viewer.maxFileSizeMb", 400);
+}
+
+function includeChildren(): boolean {
+  return vscode.workspace.getConfiguration("ifc").get<boolean>("viewer.includeChildren", true);
 }
