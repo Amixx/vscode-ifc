@@ -8,7 +8,6 @@ interface IfcInitializationOptions {
   addLocalSchemaToSelection?: string[];
   astFileSizeLimitMb?: number;
   semanticTokensEnabled?: boolean;
-  outlineMaxSymbols?: number;
 }
 
 export class IfcLanguageClientManager {
@@ -147,7 +146,6 @@ function getInitializationOptions(config: IfcExtensionConfig): IfcInitialization
 
   initializationOptions.astFileSizeLimitMb = config.astFileSizeLimitMb;
   initializationOptions.semanticTokensEnabled = config.semanticTokensEnabled;
-  initializationOptions.outlineMaxSymbols = config.outlineMaxSymbols;
 
   return initializationOptions;
 }

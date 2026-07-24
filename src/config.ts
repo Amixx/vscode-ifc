@@ -13,7 +13,6 @@ export interface IfcExtensionConfig {
   addLocalSchemaToSelection: string[];
   astFileSizeLimitMb: number;
   semanticTokensEnabled: boolean;
-  outlineMaxSymbols: number;
   trace: Trace;
 }
 
@@ -39,7 +38,6 @@ export function getIfcConfig(): IfcExtensionConfig {
       .filter((entry) => entry.length > 0),
     astFileSizeLimitMb: config.get<number>("analysis.astFileSizeLimitMb", 70),
     semanticTokensEnabled: config.get<boolean>("semanticTokens.enabled", true),
-    outlineMaxSymbols: config.get<number>("outline.maxSymbols", 20_000),
     trace: toTrace(config.get<string>("trace.server", "off")),
   };
 }
