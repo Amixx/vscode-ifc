@@ -37,7 +37,8 @@
     "onLanguage:ifc",
     "onCommand:ifc.downloadLanguageServer",
     "onCommand:ifc.restartLanguageServer",
-    "onCommand:ifc.showResolvedServer"
+    "onCommand:ifc.showResolvedServer",
+    "onView:ifc.modelTree"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -63,6 +64,23 @@
         "path": "./syntaxes/ifc.tmLanguage.json"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ifc",
+          "title": "IFC",
+          "icon": "resources/logo.svg"
+        }
+      ]
+    },
+    "views": {
+      "ifc": [
+        {
+          "id": "ifc.modelTree",
+          "name": "Model Tree"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "ifc.downloadLanguageServer",
@@ -75,8 +93,47 @@
       {
         "command": "ifc.showResolvedServer",
         "title": "IFC Language Support: Show Resolved Language Server"
+      },
+      {
+        "command": "ifc.modelTree.refresh",
+        "title": "Refresh Model Tree",
+        "category": "IFC",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "ifc.modelTree.preview",
+        "title": "Preview in 3D",
+        "category": "IFC",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "ifc.modelTree.revealInEditor",
+        "title": "Reveal in Editor",
+        "category": "IFC",
+        "icon": "$(go-to-file)"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "ifc.modelTree.refresh",
+          "when": "view == ifc.modelTree",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "ifc.modelTree.preview",
+          "when": "view == ifc.modelTree && viewItem == ifcModelTreeNode",
+          "group": "inline@1"
+        },
+        {
+          "command": "ifc.modelTree.revealInEditor",
+          "when": "view == ifc.modelTree && viewItem == ifcModelTreeNode",
+          "group": "navigation@2"
+        }
+      ]
+    },
     "configuration": {
       "title": "IFC Language Support",
       "properties": {

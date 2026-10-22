@@ -14,6 +14,19 @@ interface IfcInitializationOptions {
   semanticTokensEnabled?: boolean;
 }
 
+export interface IfcSpatialTreeNode {
+  id: number;
+  entityName: string;
+  label: string;
+  description?: string;
+  range: {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+  };
+  hasChildren: boolean;
+  childCount: number;
+}
+
 export class IfcLanguageClientManager {
   private client: LanguageClient | undefined;
 
@@ -83,6 +96,20 @@ export class IfcLanguageClientManager {
   async restart(): Promise<void> {
     await this.stop();
     await this.start();
+  }
+
+  async spatialTreeChildren(
+    uri: vscode.Uri,
+    parentId?: number,
+  ): Promise<IfcSpatialTreeNode[]> {
+    if (!this.client) {
+      return [];
+    }
+
+    return this.client.sendRequest<IfcSpatialTreeNode[]>("ifc/spatialTreeChildren", {
+      uri: uri.toString(),
+      parentId,
+    });
   }
 }
 

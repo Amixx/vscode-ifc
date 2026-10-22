@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { IfcLanguageClientManager } from "./client";
 import { createOutputChannel } from "./logging";
+import { registerModelTree } from "./modelTree";
 import { resolveServer } from "./serverPath";
 
 let manager: IfcLanguageClientManager | undefined;
@@ -11,6 +12,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   manager = nextManager;
 
   context.subscriptions.push(output);
+  registerModelTree(context, nextManager, output);
 
   context.subscriptions.push(
     vscode.commands.registerCommand("ifc.downloadLanguageServer", async () => {
